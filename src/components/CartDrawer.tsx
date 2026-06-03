@@ -1,0 +1,420 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useState, FormEvent } from 'react';
+import { CartItem, Language, TranslationSchema, Offer } from '../types';
+import CrackerVisual from './CrackerVisual';
+import { X, Trash2, Tag, Send, AlertTriangle, ArrowRight, MessageSquare, CheckCircle } from 'lucide-react';
+
+interface CartDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  cartItems: CartItem[];
+  onUpdateQty: (pId: string, quantity: number) => void;
+  onRemoveItem: (pId: string) => void;
+  lang: Language;
+  translations: TranslationSchema;
+  offers: Offer[];
+  onSubmitOrder: (details: {
+    customerName: string;
+    mobile: string;
+    address: string;
+    notes?: string;
+    couponApplied?: string;
+  }) => Promise<{ success: boolean; orderId?: string }>;
+}
+
+export default function CartDrawer({
+  isOpen,
+  onClose,
+  cartItems,
+  onUpdateQty,
+  onRemoveItem,
+  lang,
+  translations,
+  offers,
+  onSubmitOrder
+}: CartDrawerProps) {
+  const [customerName, setCustomerName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedOffer, setAppliedOffer] = useState<Offer | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState('');
+
+  if (!isOpen) return null;
+
+  // Calculate prices
+  const subtotal = cartItems.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+  
+  // Handle coupon apply
+  const handleApplyCoupon = () => {
+    setCouponError('');
+    if (!couponCode.trim()) return;
+
+    const offer = offers.find(o => o.code.toUpperCase() === couponCode.trim().toUpperCase() && o.active);
+    if (!offer) {
+      setCouponError(lang === 'en' ? 'Invalid or inactive promo code.' : 'செல்லாத விளம்பரக் குறியீடு.');
+      setAppliedOffer(null);
+      return;
+    }
+
+    if (subtotal < offer.minOrderValue) {
+      const needed = offer.minOrderValue - subtotal;
+      setCouponError(
+        lang === 'en'
+          ? `Cart total must be at least ₹${offer.minOrderValue} (Add ₹${needed} more).`
+          : `ஆர்டர் மதிப்பு ₹${offer.minOrderValue} இருக்க வேண்டும் (மேலும் ₹${needed} சேர்க்கவும்)`
+      );
+      setAppliedOffer(null);
+      return;
+    }
+
+    setAppliedOffer(offer);
+  };
+
+  const discountAmount = appliedOffer ? Math.round((subtotal * appliedOffer.discountPercentage) / 100) : 0;
+  const finalTotal = subtotal - discountAmount;
+
+  // Build formatted text for WhatsApp
+  const generateWhatsAppUrl = () => {
+    const space = '%20';
+    const newline = '%0A';
+    
+    let text = `*🚨 NEW CELEBRATION ORDER - GARUDAN FIREWORKS* 🎇${newline}${newline}`;
+    text += `*Customer Details:*${newline}`;
+    text += `• Name: ${customerName}${newline}`;
+    text += `• Phone: ${mobile}${newline}`;
+    text += `• Address: ${address}${newline}`;
+    if (notes) text += `• Instructions: ${notes}${newline}`;
+    text += `${newline}*Itemized Cart:*${newline}`;
+    
+    cartItems.forEach((item, index) => {
+      const name = lang === 'en' ? item.product.nameEn : item.product.nameTa;
+      text += `${index + 1}. ${name} [Qty: ${item.quantity}] - ₹${(item.product.price * item.quantity).toLocaleString('en-IN')}${newline}`;
+    });
+
+    text += `${newline}*Financial Summary:*${newline}`;
+    text += `• Subtotal: ₹${subtotal.toLocaleString('en-IN')}${newline}`;
+    if (appliedOffer) {
+      text += `• Coupon Applied: ${appliedOffer.code} (-${appliedOffer.discountPercentage}%)${newline}`;
+      text += `• Discount Savings: -₹${discountAmount.toLocaleString('en-IN')}${newline}`;
+    }
+    text += `*• GRAND TOTAL: ₹${finalTotal.toLocaleString('en-IN')}*${newline}${newline}`;
+    text += `🎇 _Thank you for choosing Garudan Fireworks to light up your skies! Please verify this order list._`;
+
+    return `https://wa.me/919092268462?text=${text}`;
+  };
+
+  const handlePlaceOrder = async (e: FormEvent) => {
+    e.preventDefault();
+    if (cartItems.length === 0) return;
+
+    if (!customerName || !mobile || !address) {
+      alert(lang === 'en' ? 'Please complete all required fields.' : 'தேவையான அனைத்து விவரங்களையும் நிரப்பவும்.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await onSubmitOrder({
+        customerName,
+        mobile,
+        address,
+        notes,
+        couponApplied: appliedOffer?.code
+      });
+
+      if (result.success) {
+        setCreatedOrderId(result.orderId || '');
+        setOrderSuccess(true);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(lang === 'en' ? 'Failed to process order. Try again.' : 'ஆர்டர் செய்வதில் தோல்வி. மீண்டும் முயல்க.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden" id="cart-drawer-overlay">
+      
+      {/* Background overlay */}
+      <div 
+        className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+
+      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+        <div className="w-screen max-w-md bg-[#050505] border-l border-white/10 flex flex-col justify-between shadow-2xl relative">
+          
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+            <h2 className="text-xl font-black uppercase tracking-tighter text-white font-display">
+              {translations.cart}
+            </h2>
+            <button
+              onClick={onClose}
+              id="close-cart-drawer"
+              className="p-1 text-neutral-400 hover:text-[#D4AF37] cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Cart Contents */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+            {orderSuccess ? (
+              // Order placement Success screen
+              <div className="text-center py-10 space-y-6 flex flex-col items-center justify-center h-full">
+                <div className="p-4 bg-emerald-950/40 rounded-none border border-emerald-500/20 text-emerald-400">
+                  <CheckCircle className="w-12 h-12" />
+                </div>
+                <h3 className="font-sans font-black uppercase tracking-tight text-white text-xl">
+                  {lang === 'en' ? 'Celebration Confirmed!' : 'கொண்டாடம் உறுதியானது!'}
+                </h3>
+                <p className="text-xs text-neutral-300 leading-relaxed max-w-xs font-sans">
+                  {translations.orderSuccess}
+                </p>
+                {createdOrderId && (
+                  <span className="block font-mono text-[9px] px-3 py-1 bg-[#111] rounded-none border border-white/5 text-[#D4AF37] uppercase tracking-widest">
+                    ID: {createdOrderId}
+                  </span>
+                )}
+
+                <div className="w-full pt-4 space-y-3">
+                  <a
+                    href={generateWhatsAppUrl()}
+                    target="_blank"
+                    rel="noreferrer"
+                    id="whatsapp-success-trigger"
+                    className="w-full flex items-center justify-center gap-2 py-4 bg-[#111111] border border-emerald-500/30 text-emerald-400 font-black uppercase tracking-widest text-xs rounded-none shadow-lg hover:bg-emerald-950/20 transition-all cursor-pointer"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    <span>{translations.whatsappOrder}</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      setOrderSuccess(false);
+                      setCustomerName('');
+                      setMobile('');
+                      setAddress('');
+                      setNotes('');
+                      setAppliedOffer(null);
+                      setCouponCode('');
+                      onClose();
+                    }}
+                    className="w-full py-2.5 text-xs text-neutral-400 hover:text-white underline font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    {lang === 'en' ? 'Continue Browsing Sparklers' : 'விற்பனையை தொடர'}
+                  </button>
+                </div>
+              </div>
+            ) : cartItems.length === 0 ? (
+              // Empty cart state
+              <div className="text-center py-24 space-y-4 flex flex-col items-center justify-center h-full">
+                <p className="text-neutral-500 font-sans text-sm">
+                  {translations.emptyCart}
+                </p>
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 rounded-none border border-white/25 text-[#D4AF37] hover:border-[#D4AF37] text-[10px] font-black uppercase tracking-widest cursor-pointer"
+                >
+                  {translations.shopNow}
+                </button>
+              </div>
+            ) : (
+              // Standard checkout list Flow
+              <div className="space-y-6">
+                
+                {/* List items */}
+                <div className="divide-y divide-white/5">
+                  {cartItems.map((item) => {
+                    const name = lang === 'en' ? item.product.nameEn : item.product.nameTa;
+                    return (
+                      <div key={item.product.id} className="py-4 flex gap-4 items-center justify-between">
+                        <div className="w-12 h-12 rounded-none bg-[#111111] border border-white/5 p-1 flex-shrink-0">
+                          <CrackerVisual type={item.product.image} className="w-full h-full object-contain" />
+                        </div>
+
+                        <div className="flex-grow">
+                          <span className="block font-sans font-black uppercase text-xs text-neutral-200 line-clamp-1">{name}</span>
+                          <span className="block font-mono text-[10px] text-[#D4AF37] uppercase tracking-wider">₹{item.product.price.toLocaleString('en-IN')} each</span>
+                        </div>
+
+                        {/* Qty Adjustment inside checkout */}
+                        <div className="flex items-center gap-1 bg-black rounded-none p-1 border border-white/10">
+                          <button
+                            onClick={() => onUpdateQty(item.product.id, item.quantity - 1)}
+                            className="px-2 py-0.5 text-neutral-400 hover:text-white"
+                          >
+                            -
+                          </button>
+                          <span className="w-5 text-center text-xs font-bold font-mono text-white">{item.quantity}</span>
+                          <button
+                            onClick={() => onUpdateQty(item.product.id, item.quantity + 1)}
+                            className="px-2 py-0.5 text-neutral-400 hover:text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Remove item */}
+                        <button
+                          onClick={() => onRemoveItem(item.product.id)}
+                          className="p-1 text-neutral-500 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Offer Coupon Form */}
+                <div className="p-4 bg-[#111111]/90 rounded-none border border-white/5 space-y-3">
+                  <span className="block text-[10px] uppercase font-mono tracking-widest text-[#D4AF37] font-bold">
+                    {lang === 'en' ? 'Festive Offers & Coupon' : 'திருவிழா சலுகை குறியீடு'}
+                  </span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      placeholder="e.g. DIWALI2026"
+                      className="flex-grow px-3 py-2 text-xs rounded-none bg-black border border-white/10 text-white font-mono placeholder-neutral-600 focus:outline-none focus:border-[#D4AF37]"
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      className="px-4 py-2 bg-[#D4AF37] text-black font-black font-sans text-[10px] uppercase tracking-widest rounded-none hover:bg-white transition-all cursor-pointer"
+                    >
+                      {lang === 'en' ? 'Apply' : 'பயன்படுத்து'}
+                    </button>
+                  </div>
+                  {couponError && <span className="block text-[11px] text-red-500 font-medium">{couponError}</span>}
+                  {appliedOffer && (
+                    <div className="bg-emerald-950/20 p-2 rounded-none border border-emerald-500/20 text-[10px] uppercase tracking-wider text-emerald-400 font-bold">
+                      ✓ Promo Applied: {appliedOffer.code} (Saved {appliedOffer.discountPercentage}%)
+                    </div>
+                  )}
+                </div>
+
+                {/* Order Form */}
+                <form onSubmit={handlePlaceOrder} className="space-y-4 pt-4 border-t border-white/5">
+                  <span className="block text-[10px] uppercase font-mono tracking-[0.25em] text-neutral-400 font-bold">
+                    {translations.quickOrder}
+                  </span>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[9px] uppercase font-mono tracking-widest text-neutral-400 font-bold mb-1.5">{translations.name} *</label>
+                      <input
+                        type="text"
+                        required
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Sundar Raman"
+                        className="w-full px-3.5 py-2.5 rounded-none bg-black border border-white/10 text-white font-mono text-xs placeholder-neutral-600 focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] uppercase font-mono tracking-widest text-neutral-400 font-bold mb-1.5">{translations.phone} *</label>
+                      <input
+                        type="tel"
+                        required
+                        value={mobile}
+                        onChange={(e) => setMobile(e.target.value)}
+                        placeholder="e.g. 9845012345"
+                        className="w-full px-3.5 py-2.5 rounded-none bg-black border border-white/10 text-white font-mono text-xs placeholder-neutral-600 focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] uppercase font-mono tracking-widest text-neutral-400 font-bold mb-1.5">{translations.address} *</label>
+                      <textarea
+                        required
+                        rows={2}
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="12, Royal Palace Road, Alwarpet, Chennai - 600018"
+                        className="w-full px-3.5 py-2.5 rounded-none bg-black border border-white/10 text-white font-mono text-xs placeholder-neutral-600 focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] uppercase font-mono tracking-widest text-neutral-400 font-bold mb-1.5">{translations.notes} (Optional)</label>
+                      <input
+                        type="text"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Deliver safely. Leave near main latch gate."
+                        className="w-full px-3.5 py-2.5 rounded-none bg-black border border-white/10 text-white font-mono text-xs placeholder-neutral-600 focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Pricing Breakdown Card */}
+                  <div className="p-4 bg-[#111111]/90 rounded-none space-y-2 border border-white/5">
+                    <div className="flex justify-between text-[10px] uppercase tracking-wider text-neutral-400">
+                      <span>Subtotal</span>
+                      <span className="font-mono">₹{subtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    {appliedOffer && (
+                      <div className="flex justify-between text-[10px] uppercase tracking-wider text-emerald-400 font-bold">
+                        <span>Festive Savings ({appliedOffer.discountPercentage}%)</span>
+                        <span className="font-mono">-₹{discountAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs font-black uppercase tracking-wider text-white pt-2.5 border-t border-white/5">
+                      <span>{translations.total}</span>
+                      <span className="font-mono text-[#D4AF37] text-sm">₹{finalTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  {/* Submission buttons */}
+                  <div className="grid grid-cols-1 gap-2 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || cartItems.length === 0}
+                      id="place-order-email-submit"
+                      className="w-full py-4 bg-[#D4AF37] text-black font-black uppercase tracking-widest text-xs rounded-none transition-all flex items-center justify-center gap-2 disabled:opacity-40 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>{isSubmitting ? translations.loading : translations.placeOrder}</span>
+                    </button>
+
+                    <a
+                      href={(!customerName || !mobile || !address) ? 'javascript:void(0)' : generateWhatsAppUrl()}
+                      target={(!customerName || !mobile || !address) ? undefined : '_blank'}
+                      rel="noreferrer"
+                      onClick={(e) => {
+                        if (!customerName || !mobile || !address) {
+                          e.preventDefault();
+                          alert(lang === 'en' ? 'Please complete Name, Mobile, and Address to unlock WhatsApp formatting!' : 'வாட்ஸ்அப்பில் ஆர்டர் செய்ய பெயர், கைபேசி எண் மற்றும் முகவரியை முதலில் நிரப்பவும்!');
+                        }
+                      }}
+                      id="place-order-whatsapp-submit"
+                      className="w-full py-4 bg-[#111111] border border-emerald-500/30 text-emerald-400 font-black uppercase tracking-widest text-xs rounded-none hover:bg-emerald-950/20 transition-all flex items-center justify-center gap-2 text-center cursor-pointer"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>{translations.whatsappOrder}</span>
+                    </a>
+                  </div>
+
+                </form>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  );
+}
