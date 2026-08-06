@@ -87,7 +87,7 @@ export default function CartDrawer({
     const space = '%20';
     const newline = '%0A';
     
-    let text = `*🚨 NEW CELEBRATION ORDER - GARUDAN FIREWORKS* 🎇${newline}${newline}`;
+    let text = `*🚨 NEW CELEBRATION ORDER - GARUDAN CRACKERS* 🎇${newline}${newline}`;
     text += `*Customer Details:*${newline}`;
     text += `• Name: ${customerName}${newline}`;
     text += `• Phone: ${mobile}${newline}`;
@@ -107,7 +107,7 @@ export default function CartDrawer({
       text += `• Discount Savings: -₹${discountAmount.toLocaleString('en-IN')}${newline}`;
     }
     text += `*• GRAND TOTAL: ₹${finalTotal.toLocaleString('en-IN')}*${newline}${newline}`;
-    text += `🎇 _Thank you for choosing Garudan Fireworks to light up your skies! Please verify this order list._`;
+    text += `🎇 _Thank you for choosing Garudan Crackers to light up your skies! Please verify this order list._`;
 
     return `https://wa.me/919092268462?text=${text}`;
   };

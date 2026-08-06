@@ -323,10 +323,10 @@ export default function App() {
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="relative min-h-screen text-white font-sans selection:bg-amber-500 selection:text-neutral-950">
+    <div className="relative min-h-screen bg-[#050505] text-white font-sans selection:bg-amber-500 selection:text-neutral-950">
       
       {/* Background Interactive Fireworks Layer */}
-      <FireworksCanvas />
+      <FireworksCanvas enabled={true} soundEnabled={false} />
 
       {/* Backdrop vignette filters */}
       <div className="relative z-10 flex flex-col justify-between min-h-screen">

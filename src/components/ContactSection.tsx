@@ -36,7 +36,7 @@ export default function ContactSection({ lang, translations }: ContactSectionPro
       
       {/* Floating WhatsApp Action Button (Floating at bottom-right corner) */}
       <a
-        href="https://wa.me/919092268462?text=Hi%20Garudan%20Fireworks,%20I'd%20like%20to%20know%20more%20about%20your%20diwali%20cracker%20prices!"
+        href="https://wa.me/919092268462?text=Hi%20Garudan%20Crackers,%20I'd%20like%20to%20know%20more%20about%20your%20diwali%20cracker%20prices!"
         target="_blank"
         rel="noreferrer"
         id="floating-whatsapp-trigger"
@@ -83,7 +83,7 @@ export default function ContactSection({ lang, translations }: ContactSectionPro
                 <div>
                   <span className="block font-bold text-neutral-200 text-sm">Royal Showroom Address</span>
                   <span className="block text-xs text-neutral-400 leading-relaxed mt-0.5">
-                    Garudan Fireworks Plant Lane, Virudhunagar Main Road, Sivakasi Road, Virudhunagar - 626123, Tamil Nadu, India.
+                    Garudan Crackers Plant Lane, Virudhunagar Main Road, Sivakasi Road, Virudhunagar - 626123, Tamil Nadu, India.
                   </span>
                 </div>
               </div>
@@ -100,7 +100,7 @@ export default function ContactSection({ lang, translations }: ContactSectionPro
                 <Mail className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
                 <div>
                   <span className="block font-bold text-neutral-200 text-sm">Administrative Email</span>
-                  <span className="block text-xs text-mono text-[#D4AF37] mt-0.5">sales@garudanfireworks.com, info@garudan.in</span>
+                  <span className="block text-xs text-mono text-[#D4AF37] mt-0.5">sales@garudancrackers.com, info@garudan.in</span>
                 </div>
               </div>
 

@@ -241,7 +241,7 @@ export const FESTIVAL_OFFERS: Offer[] = [
 
 export const TRANSLATIONS: Record<Language, TranslationSchema> = {
   en: {
-    brandName: 'Garudan Fireworks',
+    brandName: 'Garudan Crackers',
     tagline: 'Light Up Every Celebration',
     home: 'Home',
     products: 'Products',
