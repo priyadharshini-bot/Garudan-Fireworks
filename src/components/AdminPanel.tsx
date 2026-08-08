@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, ChangeEvent, DragEvent } from 'react';
 import { Product, Category, Order, Offer, Language, TranslationSchema } from '../types';
 import CrackerVisual from './CrackerVisual';
 import { 
   Package, ShoppingBag, Receipt, Tag, Plus, Edit, Trash2, 
-  Download, RefreshCw, Layers, TrendingUp, CheckCircle, AlertCircle, X, Check 
+  Download, RefreshCw, Layers, TrendingUp, CheckCircle, AlertCircle, X, Check,
+  Upload, UploadCloud, Image as ImageIcon, Link as LinkIcon, FileImage, Sparkles
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -49,6 +50,12 @@ export default function AdminPanel({
   // Local CRUD form state
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProdId, setEditingProdId] = useState<string | null>(null);
+
+  // Deletion confirmation dialog states
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeletingProd, setIsDeletingProd] = useState(false);
+  const [offerToDelete, setOfferToDelete] = useState<Offer | null>(null);
+  const [isDeletingOffer, setIsDeletingOffer] = useState(false);
   
   // Product Form states
   const [nameEn, setNameEn] = useState('');
@@ -61,8 +68,75 @@ export default function AdminPanel({
   const [stock, setStock] = useState(100);
   const [isFeatured, setIsFeatured] = useState(false);
   const [imageType, setImageType] = useState('sparkler');
-  const [useCustomImage, setUseCustomImage] = useState(false);
+  const [useCustomImage, setUseCustomImage] = useState(true);
   const [customImageUrl, setCustomImageUrl] = useState('');
+  const [imageSourceMode, setImageSourceMode] = useState<'file' | 'preset' | 'url'>('file');
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+
+  // Helper to read local image file and compress into base64 data URL
+  const compressAndReadImageFile = (file: File): Promise<{ dataUrl: string; fileName: string }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (!file.type.startsWith('image/')) {
+          resolve({ dataUrl: result, fileName: file.name });
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+          const MAX_DIM = 900;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.88);
+            resolve({ dataUrl: compressed, fileName: file.name });
+          } else {
+            resolve({ dataUrl: result, fileName: file.name });
+          }
+        };
+        img.onerror = () => resolve({ dataUrl: result, fileName: file.name });
+        img.src = result;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFileSelect = async (file: File | undefined) => {
+    if (!file) return;
+    setIsProcessingImage(true);
+    try {
+      const res = await compressAndReadImageFile(file);
+      setCustomImageUrl(res.dataUrl);
+      setUploadedFileName(res.fileName);
+      setUseCustomImage(true);
+      setImageSourceMode('file');
+    } catch (err) {
+      console.error('Failed reading image file:', err);
+      alert('Could not process selected image file. Please try another picture.');
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
 
   // Coupon form states
   const [couponCode, setCouponCode] = useState('');
@@ -74,6 +148,11 @@ export default function AdminPanel({
   // Handle product save (Add or edit)
   const handleSaveProduct = async (e: FormEvent) => {
     e.preventDefault();
+    if (useCustomImage && !customImageUrl.trim()) {
+      alert('Please upload or select an image file for this product.');
+      return;
+    }
+
     const prodPayload = {
       nameEn,
       nameTa,
@@ -123,10 +202,22 @@ export default function AdminPanel({
       setImageType('sparkler');
       setCustomImageUrl(p.image);
       setUseCustomImage(true);
+      if (p.image.startsWith('data:')) {
+        setImageSourceMode('file');
+        setUploadedFileName('Uploaded Product Image');
+      } else if (p.image.startsWith('http://') || p.image.startsWith('https://')) {
+        setImageSourceMode('url');
+        setUploadedFileName('');
+      } else {
+        setImageSourceMode('file');
+        setUploadedFileName('Product Image File');
+      }
     } else {
       setImageType(p.image || 'sparkler');
       setCustomImageUrl('');
       setUseCustomImage(false);
+      setImageSourceMode('preset');
+      setUploadedFileName('');
     }
     setShowAddForm(true);
   };
@@ -142,8 +233,10 @@ export default function AdminPanel({
     setStock(100);
     setIsFeatured(false);
     setImageType('sparkler');
-    setUseCustomImage(false);
+    setUseCustomImage(true);
+    setImageSourceMode('file');
     setCustomImageUrl('');
+    setUploadedFileName('');
   };
 
   // Add Promo Code
@@ -405,36 +498,192 @@ export default function AdminPanel({
                   </select>
                 </div>
 
-                <div className="md:col-span-2 p-4 bg-neutral-950 rounded-lg border border-neutral-800/80 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2">
-                    <span className="block text-xs font-bold text-[#D4AF37] uppercase tracking-wider font-mono">Product Image / Visual Specification</span>
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
-                        <input
-                          type="radio"
-                          name="image_source_option"
-                          checked={!useCustomImage}
-                          onChange={() => setUseCustomImage(false)}
-                          className="w-3.5 h-3.5 accent-[#D4AF37]"
-                        />
-                        <span>Vector Motif Preset</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
-                        <input
-                          type="radio"
-                          name="image_source_option"
-                          checked={useCustomImage}
-                          onChange={() => setUseCustomImage(true)}
-                          className="w-3.5 h-3.5 accent-[#D4AF37]"
-                        />
-                        <span>Custom Image URL</span>
-                      </label>
+                <div className="md:col-span-2 p-4 bg-neutral-950 rounded-xl border border-neutral-800/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                    <span className="block text-xs font-bold text-[#D4AF37] uppercase tracking-wider font-mono flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-amber-400" />
+                      <span>Product Image Source</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-neutral-900 p-1 rounded-lg border border-neutral-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageSourceMode('file');
+                          setUseCustomImage(true);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-bold font-sans transition-all flex items-center gap-1.5 cursor-pointer ${
+                          imageSourceMode === 'file' && useCustomImage
+                            ? 'bg-amber-500 text-neutral-950 shadow-md'
+                            : 'text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>My Device Files</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageSourceMode('url');
+                          setUseCustomImage(true);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-bold font-sans transition-all flex items-center gap-1.5 cursor-pointer ${
+                          imageSourceMode === 'url' && useCustomImage
+                            ? 'bg-amber-500 text-neutral-950 shadow-md'
+                            : 'text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        <LinkIcon className="w-3.5 h-3.5" />
+                        <span>Web URL</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageSourceMode('preset');
+                          setUseCustomImage(false);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-bold font-sans transition-all flex items-center gap-1.5 cursor-pointer ${
+                          !useCustomImage
+                            ? 'bg-amber-500 text-neutral-950 shadow-md'
+                            : 'text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Preset Motif</span>
+                      </button>
                     </div>
                   </div>
 
-                  {!useCustomImage ? (
-                    <div>
-                      <label className="block text-[10px] text-neutral-500 mb-1 font-mono uppercase tracking-widest">Select Graphic Motif Preset *</label>
+                  {/* Mode 1: Import from Device Files */}
+                  {imageSourceMode === 'file' && useCustomImage && (
+                    <div className="space-y-3">
+                      {customImageUrl && customImageUrl.startsWith('data:') ? (
+                        <div className="flex flex-col sm:flex-row items-center gap-4 p-3 bg-neutral-900/90 rounded-xl border border-amber-500/30">
+                          <div className="w-24 h-24 rounded-lg bg-black border border-neutral-700 overflow-hidden flex items-center justify-center p-1 shrink-0 relative group">
+                            <img 
+                              src={customImageUrl} 
+                              alt="Product Preview" 
+                              className="w-full h-full object-contain rounded"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
+                            <div className="flex items-center gap-2 justify-center sm:justify-start text-emerald-400 text-xs font-bold font-mono">
+                              <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>Image File Loaded Successfully</span>
+                            </div>
+                            <p className="text-xs text-white font-semibold truncate">
+                              {uploadedFileName || 'Custom Local File'}
+                            </p>
+                            <p className="text-[11px] text-neutral-400 font-mono">
+                              Stored directly in product catalog
+                            </p>
+                            <div className="pt-2 flex items-center justify-center sm:justify-start gap-2">
+                              <label 
+                                htmlFor="product-file-upload-replace"
+                                className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 hover:text-white rounded-lg text-xs font-bold cursor-pointer transition-all border border-neutral-700 flex items-center gap-1"
+                              >
+                                <Upload className="w-3 h-3" />
+                                <span>Choose Different File</span>
+                              </label>
+                              <input
+                                type="file"
+                                id="product-file-upload-replace"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleImageFileSelect(e.target.files?.[0])}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomImageUrl('');
+                                  setUploadedFileName('');
+                                }}
+                                className="px-2.5 py-1.5 text-red-400 hover:text-red-300 text-xs font-bold hover:bg-red-950/40 rounded-lg transition-all"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          onDragOver={(e: DragEvent<HTMLDivElement>) => e.preventDefault()}
+                          onDrop={(e: DragEvent<HTMLDivElement>) => {
+                            e.preventDefault();
+                            handleImageFileSelect(e.dataTransfer.files?.[0]);
+                          }}
+                          className="border-2 border-dashed border-amber-500/40 hover:border-amber-400 bg-neutral-900/60 hover:bg-neutral-900 rounded-2xl p-6 text-center transition-all group cursor-pointer"
+                          onClick={() => {
+                            document.getElementById('product-file-upload-main')?.click();
+                          }}
+                        >
+                          <input
+                            type="file"
+                            id="product-file-upload-main"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleImageFileSelect(e.target.files?.[0])}
+                          />
+
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="p-3 bg-amber-500/10 rounded-full text-amber-400 border border-amber-500/30 group-hover:scale-110 transition-transform">
+                              <UploadCloud className="w-8 h-8" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-white">
+                                {isProcessingImage ? 'Processing image file...' : 'Click or Drag & Drop Product Photo Here'}
+                              </p>
+                              <p className="text-xs text-neutral-400 font-sans">
+                                Import images directly from your computer, phone, or local files (.PNG, .JPG, .WEBP)
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={isProcessingImage}
+                              className="mt-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                            >
+                              <FileImage className="w-4 h-4" />
+                              <span>Browse Files from Device</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Mode 2: Custom Online Web URL */}
+                  {imageSourceMode === 'url' && useCustomImage && (
+                    <div className="space-y-2">
+                      <label className="block text-[10px] text-neutral-400 font-mono uppercase tracking-widest">
+                        Custom Online Image Link (HTTPS Image URL) *
+                      </label>
+                      <input
+                        type="text"
+                        required={imageSourceMode === 'url'}
+                        value={customImageUrl}
+                        onChange={(e) => setCustomImageUrl(e.target.value)}
+                        placeholder="e.g. https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=500"
+                        className="w-full px-3 py-2 text-sm rounded bg-neutral-900 border border-neutral-800 text-[#D4AF37] font-mono focus:outline-none focus:border-amber-500 placeholder-neutral-700"
+                      />
+                      {customImageUrl && (
+                        <div className="flex items-center gap-3 pt-2">
+                          <div className="w-12 h-12 rounded bg-black border border-neutral-700 overflow-hidden shrink-0">
+                            <img src={customImageUrl} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                          </div>
+                          <span className="text-xs text-emerald-400 font-mono font-bold">Image URL linked</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Mode 3: Vector Motif Preset */}
+                  {!useCustomImage && (
+                    <div className="space-y-2">
+                      <label className="block text-[10px] text-neutral-400 font-mono uppercase tracking-widest">
+                        Select Graphic Motif Preset *
+                      </label>
                       <select
                         value={imageType}
                         onChange={(e) => setImageType(e.target.value)}
@@ -460,18 +709,6 @@ export default function AdminPanel({
                           <option key={opt.val} value={opt.val}>{opt.lbl}</option>
                         ))}
                       </select>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-[10px] text-neutral-500 mb-1 font-mono uppercase tracking-widest">Custom Product Image Link (HTTP URL / base64 string) *</label>
-                      <input
-                        type="text"
-                        required
-                        value={customImageUrl}
-                        onChange={(e) => setCustomImageUrl(e.target.value)}
-                        placeholder="e.g. https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=500"
-                        className="w-full px-3 py-2 text-sm rounded bg-neutral-900 border border-neutral-800 text-[#D4AF37] font-mono focus:outline-none focus:border-amber-500 placeholder-neutral-700"
-                      />
                     </div>
                   )}
                 </div>
@@ -541,24 +778,41 @@ export default function AdminPanel({
                   />
                 </div>
 
-                <div className="md:col-span-2 flex justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setEditingProdId(null);
-                      resetForm();
-                    }}
-                    className="px-4 py-2 text-xs text-neutral-400 hover:text-white"
-                  >
-                    Discard Changes
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-2 bg-amber-500 text-neutral-950 font-bold font-sans text-xs rounded-xl hover:bg-amber-400 cursor-pointer"
-                  >
-                    {editingProdId ? 'Update Specifications' : 'Commit New Cracker'}
-                  </button>
+                <div className="md:col-span-2 flex items-center justify-between pt-3 border-t border-neutral-800">
+                  {editingProdId ? (
+                    <button
+                      type="button"
+                      id="edit-form-delete-btn"
+                      onClick={() => {
+                        const match = products.find(p => p.id === editingProdId);
+                        if (match) setProductToDelete(match);
+                      }}
+                      className="px-4 py-2 bg-red-950/60 hover:bg-red-600 text-red-400 hover:text-white font-bold font-sans text-xs rounded-xl border border-red-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-md hover:shadow-red-950/50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Product</span>
+                    </button>
+                  ) : <div />}
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddForm(false);
+                        setEditingProdId(null);
+                        resetForm();
+                      }}
+                      className="px-4 py-2 text-xs text-neutral-400 hover:text-white cursor-pointer"
+                    >
+                      Discard Changes
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2 bg-amber-500 text-neutral-950 font-bold font-sans text-xs rounded-xl hover:bg-amber-400 cursor-pointer"
+                    >
+                      {editingProdId ? 'Update Specifications' : 'Commit New Cracker'}
+                    </button>
+                  </div>
                 </div>
 
               </form>
@@ -604,22 +858,20 @@ export default function AdminPanel({
                           <button
                             onClick={() => handleEditClick(p)}
                             id={`edit-item-${p.id}`}
-                            className="p-1 px-2.5 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-neutral-950 text-xs font-medium transition-all flex items-center gap-1"
+                            className="p-1 px-2.5 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-neutral-950 text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
                           >
                             <Edit className="w-3.5 h-3.5" />
                             <span>Edit</span>
                           </button>
                           
                           <button
-                            onClick={() => {
-                              if (confirm(`Confirm permanent erasure of ${p.nameEn}?`)) {
-                                onDeleteProduct(p.id);
-                              }
-                            }}
+                            onClick={() => setProductToDelete(p)}
                             id={`delete-item-${p.id}`}
-                            className="p-1 px-2.5 rounded bg-red-950/45 text-red-400 hover:bg-red-650 hover:text-neutral-950 text-xs font-medium transition-all flex items-center gap-1"
+                            className="p-1 px-2.5 rounded bg-red-950/60 text-red-400 hover:bg-red-600 hover:text-white text-xs font-medium transition-all flex items-center gap-1 cursor-pointer border border-red-500/30"
+                            title="Delete Product"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
                           </button>
                         </div>
                       </td>
@@ -859,9 +1111,9 @@ export default function AdminPanel({
                       </span>
 
                       <button
-                        onClick={() => onDeleteOffer(off.id)}
+                        onClick={() => setOfferToDelete(off)}
                         id={`delete-offer-${off.id}`}
-                        className="p-1 px-2.5 rounded bg-red-950/40 text-red-400 hover:bg-neutral-800 transition-all text-xs"
+                        className="p-1 px-2.5 rounded bg-red-950/60 text-red-400 hover:bg-red-600 hover:text-white transition-all text-xs font-bold cursor-pointer border border-red-500/30"
                       >
                         Delete
                       </button>
@@ -876,6 +1128,127 @@ export default function AdminPanel({
         )}
 
       </div>
+
+      {/* ==================== CONFIRM PRODUCT DELETION MODAL ==================== */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-neutral-900 border border-red-500/40 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl shadow-red-950/70">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-3 bg-red-950/80 rounded-full border border-red-500/40">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-sans font-bold text-lg text-white">Delete Product</h3>
+                <p className="text-xs text-neutral-400 font-mono">Irreversible Catalog Removal</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-neutral-950 rounded-xl border border-neutral-800 space-y-2">
+              <p className="text-sm font-semibold text-neutral-200">
+                Are you sure you want to delete this product?
+              </p>
+              <p className="text-xs font-bold text-amber-400">
+                “{productToDelete.nameEn} ({productToDelete.nameTa})”
+              </p>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                This item will be permanently deleted from your database, home showcase, and store catalog.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingProd}
+                onClick={() => setProductToDelete(null)}
+                className="px-4 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold font-sans transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                id="confirm-product-delete-btn"
+                disabled={isDeletingProd}
+                onClick={async () => {
+                  setIsDeletingProd(true);
+                  try {
+                    await onDeleteProduct(productToDelete.id);
+                    if (editingProdId === productToDelete.id) {
+                      setShowAddForm(false);
+                      setEditingProdId(null);
+                      resetForm();
+                    }
+                  } catch (err) {
+                    console.error('Error during product deletion:', err);
+                  } finally {
+                    setIsDeletingProd(false);
+                    setProductToDelete(null);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider font-sans transition-all cursor-pointer border border-red-400/40 shadow-lg shadow-red-950/60 flex items-center gap-1.5"
+              >
+                {isDeletingProd ? 'Deleting...' : 'Yes, Delete Product'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== CONFIRM OFFER DELETION MODAL ==================== */}
+      {offerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-neutral-900 border border-red-500/40 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl shadow-red-950/70">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-3 bg-red-950/80 rounded-full border border-red-500/40">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-sans font-bold text-lg text-white">Delete Offer Code</h3>
+                <p className="text-xs text-neutral-400 font-mono">Irreversible Coupon Removal</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-neutral-950 rounded-xl border border-neutral-800 space-y-2">
+              <p className="text-sm font-semibold text-neutral-200">
+                Are you sure you want to delete this promo coupon?
+              </p>
+              <p className="text-xs font-bold text-amber-400">
+                Code: “{offerToDelete.code}” ({offerToDelete.discountPercentage}% OFF)
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingOffer}
+                onClick={() => setOfferToDelete(null)}
+                className="px-4 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold font-sans transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                id="confirm-offer-delete-btn"
+                disabled={isDeletingOffer}
+                onClick={async () => {
+                  setIsDeletingOffer(true);
+                  try {
+                    await onDeleteOffer(offerToDelete.id);
+                  } catch (err) {
+                    console.error('Error during offer deletion:', err);
+                  } finally {
+                    setIsDeletingOffer(false);
+                    setOfferToDelete(null);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider font-sans transition-all cursor-pointer border border-red-400/40 shadow-lg shadow-red-950/60 flex items-center gap-1.5"
+              >
+                {isDeletingOffer ? 'Deleting...' : 'Yes, Delete Offer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

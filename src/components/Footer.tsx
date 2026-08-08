@@ -4,7 +4,7 @@
  */
 
 import { Language } from '../types';
-import { ShieldAlert, Award, ShieldCheck, HelpCircle, Sparkles, Heart, Tag } from 'lucide-react';
+import { ShieldAlert, Award, ShieldCheck, HelpCircle, Sparkles, Tag, Phone } from 'lucide-react';
 import garudanLogo from '../assets/images/garudan_logo_1786048656432.jpg';
 
 interface FooterProps {
@@ -52,7 +52,7 @@ export default function Footer({ lang, onNavigate, isAdmin = false }: FooterProp
                 : '1994 முதல் விண்வெளி மற்றும் தரைவகை உயர்தர பட்டாசுகளின் அங்கீகரிக்கப்பட்ட சிவகாசி உற்பத்தியாளர்கள்.'}
             </p>
             <span className="block text-[10px] font-mono text-amber-400/80 font-bold bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 inline-block">
-              EXPLOSIVES LICENSE: EXP/TN/12/2026-A
+              EXPLOSIVES LICENSE NO: 1065/2025
             </span>
           </div>
 
@@ -169,11 +169,19 @@ export default function Footer({ lang, onNavigate, isAdmin = false }: FooterProp
             onDoubleClick={() => onNavigate('admin')}
             title="Double-click for administrative portal"
           >
-            © 1994-2026 Garudan Fireworks Inc. All rights reserved.
+            © Garudan Fireworks Inc. All rights reserved.
           </span>
-          <span className="flex items-center gap-1">
-            Made with <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> for Sivakasi Diwali Celebrations.
-          </span>
+          <div className="flex items-center gap-2 flex-wrap justify-center text-neutral-300">
+            <span className="font-semibold text-amber-300">Velgenix Technology</span>
+            <span className="text-amber-500 font-bold">•</span>
+            <a 
+              href="tel:+971558903732" 
+              className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-bold transition-colors"
+            >
+              <Phone className="w-3 h-3 text-amber-400" />
+              <span>+971 55 890 3732</span>
+            </a>
+          </div>
         </div>
 
       </div>

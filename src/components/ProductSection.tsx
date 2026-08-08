@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Product, Category, Language, TranslationSchema } from '../types';
 import CrackerVisual from './CrackerVisual';
-import { Search, Sparkles, ShoppingCart, Plus, Minus, Tag, Flame, LayoutGrid, List } from 'lucide-react';
+import { Search, Sparkles, ShoppingCart, Plus, Minus, Tag, Flame, LayoutGrid, List, MessageSquare } from 'lucide-react';
 
 interface ProductSectionProps {
   products: Product[];
@@ -69,6 +69,13 @@ export default function ProductSection({
     const current = getProductQty(pId);
     const updated = Math.max(1, current + delta);
     setQuantities({ ...quantities, [pId]: updated });
+  };
+
+  const generateProductWhatsAppUrl = (product: Product, quantity: number) => {
+    const prodName = lang === 'en' ? product.nameEn : `${product.nameEn} (${product.nameTa})`;
+    const totalPrice = (product.price * quantity).toLocaleString('en-IN');
+    const message = `Hi Garudan Fireworks, I would like to place a direct order for:\n\n*Product:* ${prodName}\n*Category:* ${product.category}\n*Quantity:* ${quantity}\n*Total Price:* ₹${totalPrice}\n\nPlease confirm availability and ordering process!`;
+    return `https://wa.me/919092268462?text=${encodeURIComponent(message)}`;
   };
 
   return (
@@ -263,22 +270,36 @@ export default function ProductSection({
                       </div>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        disabled={!inStock}
-                        onClick={() => {
-                          onAddToCart(p, qty);
-                          setQuantities({ ...quantities, [p.id]: 1 });
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1 ${
-                          inStock
-                            ? 'bg-gradient-to-r from-amber-400 to-rose-500 text-black hover:scale-105'
-                            : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
-                        }`}
-                      >
-                        <ShoppingCart className="w-3 h-3" />
-                        <span className="hidden sm:inline">{inStock ? translations.addToCart : translations.outOfStock}</span>
-                        <span className="sm:hidden">{inStock ? '+' : 'X'}</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <a
+                          href={generateProductWhatsAppUrl(p, qty)}
+                          target="_blank"
+                          rel="noreferrer"
+                          id={`wa-table-btn-${p.id}`}
+                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider bg-emerald-600/90 hover:bg-emerald-500 text-white transition-all cursor-pointer inline-flex items-center gap-1 border border-emerald-400/30 shadow-md hover:scale-105"
+                          title={lang === 'en' ? 'Direct WhatsApp Order' : 'வாட்ஸ்அப் ஆர்டர்'}
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span className="hidden sm:inline">{lang === 'en' ? 'WhatsApp' : 'வாட்ஸ்அப்'}</span>
+                        </a>
+
+                        <button
+                          disabled={!inStock}
+                          onClick={() => {
+                            onAddToCart(p, qty);
+                            setQuantities({ ...quantities, [p.id]: 1 });
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1 ${
+                            inStock
+                              ? 'bg-gradient-to-r from-amber-400 to-rose-500 text-black hover:scale-105'
+                              : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                          }`}
+                        >
+                          <ShoppingCart className="w-3 h-3" />
+                          <span className="hidden sm:inline">{inStock ? translations.addToCart : translations.outOfStock}</span>
+                          <span className="sm:hidden">{inStock ? '+' : 'X'}</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -305,6 +326,21 @@ export default function ProductSection({
               >
                 {/* Accent colorful top stroke */}
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-rose-500 to-purple-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+
+                {/* Floating Direct WhatsApp Order Badge Button */}
+                <a
+                  href={generateProductWhatsAppUrl(p, qty)}
+                  target="_blank"
+                  rel="noreferrer"
+                  id={`wa-direct-float-${p.id}`}
+                  className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] font-black uppercase tracking-wider shadow-lg shadow-emerald-950/70 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-emerald-300/40"
+                  title={lang === 'en' ? 'Direct WhatsApp Order' : 'வாட்ஸ்அப் மூலம் ஆர்டர் செய்ய'}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-white animate-pulse" />
+                  <span className="font-sans font-extrabold text-[10px]">
+                    {lang === 'en' ? 'Direct WhatsApp' : 'வாட்ஸ்அப்'}
+                  </span>
+                </a>
 
                 {/* Visual discount/featured badge */}
                 <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 items-start">
@@ -390,6 +426,19 @@ export default function ProductSection({
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
+
+                  {/* Direct WhatsApp Action Button */}
+                  <a
+                    href={generateProductWhatsAppUrl(p, qty)}
+                    target="_blank"
+                    rel="noreferrer"
+                    id={`pqty-wa-${p.id}`}
+                    className="py-3 px-3 rounded-xl text-xs font-black bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/40 transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:scale-105 active:scale-95"
+                    title={lang === 'en' ? 'Direct WhatsApp Order' : 'வாட்ஸ்அப் ஆர்டர்'}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span className="hidden xl:inline text-[10px] uppercase font-bold">{lang === 'en' ? 'WhatsApp' : 'வாட்ஸ்அப்'}</span>
+                  </a>
 
                   {/* Add action button */}
                   <button

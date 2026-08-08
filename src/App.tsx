@@ -24,7 +24,7 @@ import {
 export default function App() {
   // Navigation & Language States
   const [lang, setLang] = useState<Language>('en');
-  const [route, setRoute] = useState<'home' | 'products' | 'contact' | 'admin'>('home');
+  const [route, setRoute] = useState<'home' | 'products' | 'contact' | 'admin'>('products');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     return localStorage.getItem('garudan_admin_authenticated') === 'true';
@@ -160,22 +160,61 @@ export default function App() {
     const discountAmount = Math.round((rawSubtotal * discountPercent) / 100);
     const finalTotal = rawSubtotal - discountAmount;
 
+    const payload = {
+      customerName: details.customerName,
+      mobile: details.mobile,
+      address: details.address,
+      notes: details.notes,
+      items: orderItems,
+      totalAmount: finalTotal
+    };
+
+    console.log('====================================================');
+    console.log('📲 [PROCESSING WHATSAPP ORDER PAYLOAD]:');
+    console.log(JSON.stringify(payload, null, 2));
+    console.log('====================================================');
+
+    // Build URL-encoded WhatsApp message string with order details
+    let waText = `*GARUDAN FIREWORKS - NEW ORDER*\n\n`;
+    waText += `*Customer:* ${details.customerName}\n`;
+    waText += `*Mobile:* ${details.mobile}\n`;
+    waText += `*Delivery Address:* ${details.address}\n`;
+    if (details.notes) {
+      waText += `*Notes:* ${details.notes}\n`;
+    }
+    waText += `\n*ORDER ITEMS:*\n`;
+    cart.forEach((item, index) => {
+      waText += `${index + 1}. *${item.product.nameEn}* (${item.product.nameTa}) x ${item.quantity} = ₹${(item.product.price * item.quantity).toLocaleString('en-IN')}\n`;
+    });
+    waText += `\n*SUMMARY:*\n`;
+    waText += `Subtotal: ₹${rawSubtotal.toLocaleString('en-IN')}\n`;
+    if (discountAmount > 0) {
+      waText += `Discount (${details.couponApplied}): -₹${discountAmount.toLocaleString('en-IN')}\n`;
+    }
+    waText += `*Total Amount:* ₹${finalTotal.toLocaleString('en-IN')}\n\n`;
+    waText += `🎇 Thank you for choosing Garudan Crackers!`;
+
+    const waUrl = `https://wa.me/919092268462?text=${encodeURIComponent(waText)}`;
+
+    // Trigger automated window.open to WhatsApp
+    try {
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      console.warn('⚠️ Automated WhatsApp window.open failed:', e);
+    }
+
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: details.customerName,
-          mobile: details.mobile,
-          address: details.address,
-          notes: details.notes,
-          items: orderItems,
-          totalAmount: finalTotal
-        })
+        body: JSON.stringify(payload)
       });
 
+      console.log('📡 [handleSubmitOrder] API Response status:', res.status, res.statusText);
+
       if (res.ok) {
-        const orderData = res.json();
+        const orderData = await res.json();
+        console.log('✅ [handleSubmitOrder] Order registered successfully on backend:', orderData);
         
         // Clean cart locally
         syncCart([]);
@@ -197,13 +236,16 @@ export default function App() {
           setOrders(ordList);
         }
 
-        return { success: true, orderId: (await orderData).id };
+        return { success: true, orderId: orderData.id, waUrl };
+      } else {
+        const errorText = await res.text();
+        console.error('❌ [handleSubmitOrder] API Error response:', res.status, errorText);
       }
     } catch (err) {
-      console.error('Error submitting order', err);
+      console.error('❌ [handleSubmitOrder] Network error submitting order:', err);
     }
 
-    return { success: false };
+    return { success: false, waUrl };
   };
 
   // --- ADMINISTRATOR CARDINAL CONTROLS ---
@@ -245,12 +287,16 @@ export default function App() {
   // Delete Product
   const handleAdminDeleteProduct = async (pId: string) => {
     try {
+      console.log(`🗑️ [handleAdminDeleteProduct] Deleting product ${pId}...`);
       const res = await fetch(`/api/products/${pId}`, { method: 'DELETE' });
       if (res.ok) {
-        setProducts(products.filter(p => p.id !== pId));
+        console.log(`✅ [handleAdminDeleteProduct] Product ${pId} deleted successfully from server.`);
+        setProducts(prev => prev.filter(p => p.id !== pId));
+      } else {
+        console.error('❌ [handleAdminDeleteProduct] Server returned error status:', res.status);
       }
     } catch (ex) {
-      console.error(ex);
+      console.error('❌ [handleAdminDeleteProduct] Network error during deletion:', ex);
     }
   };
 

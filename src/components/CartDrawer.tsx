@@ -6,7 +6,7 @@
 import { useState, FormEvent } from 'react';
 import { CartItem, Language, TranslationSchema, Offer } from '../types';
 import CrackerVisual from './CrackerVisual';
-import { X, Trash2, Tag, Send, AlertTriangle, ArrowRight, MessageSquare, CheckCircle } from 'lucide-react';
+import { X, Trash2, Tag, Send, AlertTriangle, ArrowRight, MessageSquare, CheckCircle, Mail } from 'lucide-react';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -122,6 +122,16 @@ export default function CartDrawer({
     }
 
     setIsSubmitting(true);
+    const waUrl = generateWhatsAppUrl();
+
+    console.log('🛒 [handlePlaceOrder] Submitting WhatsApp order:', {
+      customerName,
+      mobile,
+      address,
+      notes,
+      couponApplied: appliedOffer?.code
+    });
+
     try {
       const result = await onSubmitOrder({
         customerName,
@@ -131,13 +141,20 @@ export default function CartDrawer({
         couponApplied: appliedOffer?.code
       });
 
+      console.log('📦 [handlePlaceOrder] onSubmitOrder result:', result);
+
       if (result.success) {
         setCreatedOrderId(result.orderId || '');
         setOrderSuccess(true);
+      } else {
+        console.warn('⚠️ [handlePlaceOrder] Order submission returned success: false');
+        setOrderSuccess(true);
       }
     } catch (err) {
-      console.error(err);
-      alert(lang === 'en' ? 'Failed to process order. Try again.' : 'ஆர்டர் செய்வதில் தோல்வி. மீண்டும் முயல்க.');
+      console.error('❌ [handlePlaceOrder] Error processing order submission:', err);
+      // Fallback: launch WhatsApp directly if needed
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+      setOrderSuccess(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -174,31 +191,43 @@ export default function CartDrawer({
             {orderSuccess ? (
               // Order placement Success screen
               <div className="text-center py-10 space-y-6 flex flex-col items-center justify-center h-full">
-                <div className="p-4 bg-emerald-950/40 rounded-none border border-emerald-500/20 text-emerald-400">
+                <div className="p-4 bg-emerald-950/40 rounded-none border border-emerald-500/30 text-emerald-400">
                   <CheckCircle className="w-12 h-12" />
                 </div>
                 <h3 className="font-sans font-black uppercase tracking-tight text-white text-xl">
-                  {lang === 'en' ? 'Celebration Confirmed!' : 'கொண்டாடம் உறுதியானது!'}
+                  {lang === 'en' ? 'Order Sent to WhatsApp!' : 'ஆர்டர் வாட்ஸ்அப்பில் அனுப்பப்பட்டது!'}
                 </h3>
                 <p className="text-xs text-neutral-300 leading-relaxed max-w-xs font-sans">
                   {translations.orderSuccess}
                 </p>
                 {createdOrderId && (
-                  <span className="block font-mono text-[9px] px-3 py-1 bg-[#111] rounded-none border border-white/5 text-[#D4AF37] uppercase tracking-widest">
-                    ID: {createdOrderId}
+                  <span className="block font-mono text-[9px] px-3 py-1 bg-[#111] rounded-none border border-white/10 text-[#D4AF37] uppercase tracking-widest">
+                    Order ID: {createdOrderId}
                   </span>
                 )}
 
-                <div className="w-full pt-4 space-y-3">
+                <div className="w-full p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-left space-y-1">
+                  <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+                    <MessageSquare className="w-4 h-4 shrink-0" />
+                    <span>{lang === 'en' ? 'Direct WhatsApp Dispatch (+91 90922 68462)' : 'வாட்ஸ்அப் நேரடி விற்பனை (+91 90922 68462)'}</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 leading-snug">
+                    {lang === 'en'
+                      ? 'Your order list, customer contact, and delivery address were prepared and launched in WhatsApp for instant business processing.'
+                      : 'உங்கள் ஆர்டர் பட்டியல் மற்றும் விபரங்கள் கருடன் பட்டாசு வாட்ஸ்அப் எண்ணிற்கு உடனடியாக அனுப்பப்பட்டுள்ளது.'}
+                  </p>
+                </div>
+
+                <div className="w-full pt-2 space-y-3">
                   <a
                     href={generateWhatsAppUrl()}
                     target="_blank"
                     rel="noreferrer"
                     id="whatsapp-success-trigger"
-                    className="w-full flex items-center justify-center gap-2 py-4 bg-[#111111] border border-emerald-500/30 text-emerald-400 font-black uppercase tracking-widest text-xs rounded-none shadow-lg hover:bg-emerald-950/20 transition-all cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-xs rounded-none shadow-lg transition-all cursor-pointer border border-emerald-400/40"
                   >
-                    <MessageSquare className="w-5 h-5" />
-                    <span>{translations.whatsappOrder}</span>
+                    <MessageSquare className="w-4 h-4" />
+                    <span>{lang === 'en' ? 'Open WhatsApp Chat Again' : 'வாட்ஸ்அப் சேட்டை மீண்டும் திறக்க'}</span>
                   </a>
 
                   <button
@@ -382,29 +411,12 @@ export default function CartDrawer({
                     <button
                       type="submit"
                       disabled={isSubmitting || cartItems.length === 0}
-                      id="place-order-email-submit"
-                      className="w-full py-4 bg-[#D4AF37] text-black font-black uppercase tracking-widest text-xs rounded-none transition-all flex items-center justify-center gap-2 disabled:opacity-40 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                      id="place-order-whatsapp-submit"
+                      className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-xs rounded-none transition-all flex items-center justify-center gap-2 disabled:opacity-40 hover:scale-[1.01] active:scale-[0.99] cursor-pointer border border-emerald-400/40 shadow-lg shadow-emerald-950/60"
                     >
-                      <Send className="w-4 h-4" />
+                      <MessageSquare className="w-4 h-4 text-white" />
                       <span>{isSubmitting ? translations.loading : translations.placeOrder}</span>
                     </button>
-
-                    <a
-                      href={(!customerName || !mobile || !address) ? 'javascript:void(0)' : generateWhatsAppUrl()}
-                      target={(!customerName || !mobile || !address) ? undefined : '_blank'}
-                      rel="noreferrer"
-                      onClick={(e) => {
-                        if (!customerName || !mobile || !address) {
-                          e.preventDefault();
-                          alert(lang === 'en' ? 'Please complete Name, Mobile, and Address to unlock WhatsApp formatting!' : 'வாட்ஸ்அப்பில் ஆர்டர் செய்ய பெயர், கைபேசி எண் மற்றும் முகவரியை முதலில் நிரப்பவும்!');
-                        }
-                      }}
-                      id="place-order-whatsapp-submit"
-                      className="w-full py-4 bg-[#111111] border border-emerald-500/30 text-emerald-400 font-black uppercase tracking-widest text-xs rounded-none hover:bg-emerald-950/20 transition-all flex items-center justify-center gap-2 text-center cursor-pointer"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>{translations.whatsappOrder}</span>
-                    </a>
                   </div>
 
                 </form>

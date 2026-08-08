@@ -82,8 +82,8 @@ export default function ContactSection({ lang, translations }: ContactSectionPro
                 <MapPin className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
                 <div>
                   <span className="block font-bold text-neutral-200 text-sm">Royal Showroom Address</span>
-                  <span className="block text-xs text-neutral-400 leading-relaxed mt-0.5">
-                    Garudan Crackers Plant Lane, Virudhunagar Main Road, Sivakasi Road, Virudhunagar - 626123, Tamil Nadu, India.
+                  <span className="block text-xs text-neutral-300 leading-relaxed mt-0.5 font-sans font-medium">
+                    2/605/J, Amman township, Mettamalai, Sattur to Sivakasi Road, Sattur, Virudhunagar, Tamil Nadu.
                   </span>
                 </div>
               </div>
@@ -92,7 +92,7 @@ export default function ContactSection({ lang, translations }: ContactSectionPro
                 <Phone className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
                 <div>
                   <span className="block font-bold text-neutral-200 text-sm">Direct Phone Hotline</span>
-                  <span className="block text-xs text-mono text-[#D4AF37] mt-0.5">+91 90922 68462, +91 4562 254123</span>
+                  <span className="block text-xs text-mono text-[#D4AF37] mt-0.5">+91 90922 68462</span>
                 </div>
               </div>
 
@@ -111,44 +111,39 @@ export default function ContactSection({ lang, translations }: ContactSectionPro
                   <span className="block text-xs text-neutral-400 mt-0.5">Mon - Sun: 08:00 AM - 09:00 PM IST (Open on Holidays)</span>
                 </div>
               </div>
+
+              <div className="p-3 bg-[#130d22] border border-[#D4AF37]/30 rounded-none flex items-center justify-between">
+                <span className="text-xs font-bold text-neutral-200">Explosives License No:</span>
+                <span className="text-xs font-mono font-black text-[#D4AF37] bg-black/50 px-2.5 py-1 border border-[#D4AF37]/40">1065/2025</span>
+              </div>
             </div>
 
-            {/* Simulated Luxury Google Maps visual representation */}
-            <div className="relative h-60 w-full rounded-none overflow-hidden border border-white/5 shadow-lg bg-[#111111] group">
-              
-              {/* Custom SVG styling for map */}
-              <svg viewBox="0 0 400 200" className="w-full h-full opacity-80 group-hover:scale-105 transition-all duration-500" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Map Grid Roads */}
-                <rect width="400" height="200" fill="#131313" />
-                <path d="M 0 40 H 400 M 0 140 H 400 M 120 0 V 200 M 300 0 V 200" stroke="#252525" strokeWidth="6" />
-                <path d="M 0 100 Q 200 80, 400 130" stroke="#332211" strokeWidth="8" /> {/* Main Highway */}
-                {/* Parks */}
-                <rect x="20" y="50" width="80" height="70" rx="4" fill="#1B2A1E" opacity="0.4" />
-                <rect x="320" y="10" width="60" height="110" rx="4" fill="#1B2A1E" opacity="0.4" />
-                {/* Showroom pinpoint */}
-                <circle cx="210" cy="95" r="30" fill="rgba(212,175,55,0.15)" />
-                <circle cx="210" cy="95" r="10" fill="rgba(231,76,60,0.3)" />
-                <path d="M210 80 L 210 110 M195 95 L225 95" stroke="#D4AF37" strokeWidth="1" strokeDasharray="2 2" />
-                <circle cx="210" cy="95" r="4" fill="#E74C3C" />
-                {/* Text markers */}
-                <text x="210" y="75" fill="#D4AF37" fontSize="10px" fontWeight="bold" textAnchor="middle">GARUDAN PLANT & CO.</text>
-                <text x="50" y="85" fill="#555" fontSize="8px" textAnchor="middle">Sivakasi Reserved Forest</text>
-                <text x="250" y="155" fill="#AA4444" fontSize="8px">NH-744 bypass lane</text>
-              </svg>
+            {/* Real Interactive Google Map & Location Card */}
+            <div className="relative h-72 w-full rounded-xl overflow-hidden border border-amber-500/30 shadow-2xl bg-[#111111] group">
+              <iframe
+                title="Garudan Crackers Location Map"
+                src="https://maps.google.com/maps?q=2%2F605%2FJ%20%2C%20Amman%20township%2C%20Mettamalai%2C%20Sattur%20to%20Sivakasi%20Road%2C%20Sattur%2C%20Virudhunagar&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                className="w-full h-full border-0 grayscale contrast-125 opacity-90 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
+                loading="lazy"
+                allowFullScreen
+              />
 
               {/* Pin Overlay card */}
-              <div className="absolute bottom-3 left-3 right-3 bg-black/95 p-3 rounded-none border border-white/10 flex justify-between items-center">
-                <div className="space-y-0.5">
-                  <span className="block font-bold text-xs text-white">Garudan Flagship Factory</span>
-                  <span className="block text-[10px] text-neutral-400 font-mono">GPS Code: 9.4532° N, 77.8015° E</span>
+              <div className="absolute bottom-3 left-3 right-3 bg-neutral-950/95 backdrop-blur-md p-3.5 rounded-xl border border-amber-500/30 flex justify-between items-center shadow-xl">
+                <div className="space-y-0.5 min-w-0 flex-1 pr-2">
+                  <span className="block font-bold text-xs text-amber-300 truncate">Garudan Crackers Royal Showroom</span>
+                  <span className="block text-[10px] text-neutral-300 font-sans truncate">
+                    Mettamalai, Sattur to Sivakasi Road, Sattur
+                  </span>
                 </div>
                 <a
-                  href="https://maps.google.com/?q=Sivakasi+Fireworks"
+                  href="https://www.google.com/maps/search/?api=1&query=2%2F605%2FJ%20%2C%20Amman%20township%2C%20Mettamalai%2C%20Sattur%20to%20Sivakasi%20Road%2C%20Sattur%2C%20Virudhunagar"
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 bg-[#D4AF37] hover:bg-white text-black font-black uppercase tracking-widest text-[9px] rounded-none transition-all cursor-pointer"
+                  className="px-3.5 py-2 bg-amber-500 hover:bg-yellow-400 text-neutral-950 font-black uppercase tracking-wider text-[10px] rounded-lg transition-all cursor-pointer shrink-0 shadow-md flex items-center gap-1"
                 >
-                  {lang === 'en' ? 'Get Directions' : 'வழித்தடம்'}
+                  <MapPin className="w-3 h-3 text-neutral-950" />
+                  <span>{lang === 'en' ? 'Get Directions' : 'வழித்தடம்'}</span>
                 </a>
               </div>
             </div>

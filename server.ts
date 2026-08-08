@@ -8,6 +8,9 @@ import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Establish relative paths and DB directories
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -251,11 +254,12 @@ function saveDB(data: Schema) {
 let mailTransporter: any = null;
 function getMailTransporter() {
   if (mailTransporter === null) {
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
+    const smtpUser = (process.env.SMTP_USER || 'garudancrackers@gmail.com').trim();
+    const rawPass = process.env.SMTP_PASS || 'efzkvotyzyjwcmxu';
+    const smtpPass = rawPass.replace(/\s+/g, '').trim();
 
-    if (smtpUser && smtpPass) {
-      console.log('🔌 INITIALIZING NODEMAILER SMTP TRANSPORTER USING GMAIL DIRECTIVITY...');
+    if (smtpPass && smtpPass.length > 0) {
+      console.log(`🔌 INITIALIZING NODEMAILER SMTP TRANSPORTER FOR SENDER ${smtpUser}...`);
       mailTransporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -264,62 +268,133 @@ function getMailTransporter() {
         }
       });
     } else {
-      mailTransporter = false; // Flag to indicate SMTP parameters are missing
-      console.log('📢 GMAIL SMTP OR EMAIL NOTIFICATIONS UNCONFIGURED - WILL FALLBACK SAFEI-LY TO LOGGING SYSTEM ORDERS TO STORAGE CONSOLE');
+      mailTransporter = false; // Flag to indicate SMTP password is missing
+      console.log('📢 GMAIL SMTP_PASS UNCONFIGURED - FALLING BACK SAFELY TO DIRECT MAILTO & CONSOLE ORDER LOGGING');
     }
   }
   return mailTransporter;
 }
 
 // Trigger mail dispatcher
-async function sendOrderMailNotification(order: APIOrder) {
+async function sendOrderMailNotification(order: APIOrder): Promise<{ emailSent: boolean; emailError: string | null }> {
   const transporter = getMailTransporter();
-  
-  const recipient = process.env.ADMIN_EMAIL_RECIPIENT || 'krishnapriya5267@gmail.com';
-  const mailSubject = `🎆 GARUDAN FIREWORKS NEW ORDER RESIDUES FOR CONFIRMATION [ID: ${order.id}]`;
+  const senderEmail = process.env.SMTP_USER || 'garudancrackers@gmail.com';
+  const recipient = process.env.ADMIN_EMAIL_RECIPIENT || 'garudancrackers@gmail.com';
+  const mailSubject = `🎆 Garudan Fireworks - New Order Invoice #${order.id}`;
 
   // Item list text builder
   const listItemsText = order.items.map(
-    (it) => `• ${it.productNameEn} (Qty: ${it.quantity}) - ₹${(it.price * it.quantity).toLocaleString('en-IN')}`
+    (it) => `• ${it.productNameEn} (${it.productNameTa}) x${it.quantity} @ ₹${it.price} = ₹${(it.price * it.quantity).toLocaleString('en-IN')}`
   ).join('\n');
 
-  const textBody = `🎇 GARUDAN FIREWORKS SALES LEDGER 🎇\n\n` +
-    `Hello Admin,\nA new order has been submitted on the Garudan Fireworks eCommerce storefront.\n\n` +
+  const listItemsHtml = order.items.map(
+    (it) => `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 10px; color: #111827;"><strong>${it.productNameEn}</strong><br/><span style="color: #6b7280; font-size: 12px;">${it.productNameTa}</span></td>
+        <td style="padding: 10px; text-align: center; color: #374151;">${it.quantity}</td>
+        <td style="padding: 10px; text-align: right; color: #374151;">₹${it.price}</td>
+        <td style="padding: 10px; text-align: right; font-weight: bold; color: #111827;">₹${(it.price * it.quantity).toLocaleString('en-IN')}</td>
+      </tr>
+    `
+  ).join('');
+
+  const textBody = `🎇 GARUDAN FIREWORKS OFFICIAL ORDER INVOICE 🎇\n\n` +
+    `Hello Admin,\n` +
+    `A new order has been submitted on Garudan Fireworks Storefront.\n\n` +
+    `ORDER INVOICE ID: #${order.id}\n` +
+    `Date: ${new Date(order.createdAt).toLocaleString()}\n\n` +
     `CUSTOMER DETAILS:\n` +
     `---------------------------\n` +
     `Name: ${order.customerName}\n` +
     `Mobile: ${order.mobile}\n` +
     `Address: ${order.address}\n` +
-    `Instructions: ${order.notes || 'None'}\n\n` +
-    `ORDERED MANIFEST:\n` +
+    `Special Notes: ${order.notes || 'None'}\n\n` +
+    `ORDERED ITEMS:\n` +
     `---------------------------\n` +
     `${listItemsText}\n\n` +
-    `Total Amount Collected: ₹${order.totalAmount.toLocaleString('en-IN')}\n` +
-    `Status: ${order.status}\n` +
-    `Timestamp: ${new Date(order.createdAt).toLocaleString()}\n\n` +
-    `Please coordinate with the delivery hub or contact the customer immediately.\n\n` +
+    `GRAND TOTAL: ₹${order.totalAmount.toLocaleString('en-IN')}\n\n` +
     `Best regards,\n` +
-    `Garudan Express Automated Order Engine\n`;
+    `Garudan Fireworks Order System\n`;
+
+  const htmlBody = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div style="background-color: #050505; color: #D4AF37; padding: 24px; text-align: center; border-bottom: 3px solid #D4AF37;">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase;">GARUDAN FIREWORKS</h1>
+        <p style="margin: 6px 0 0; color: #d1d5db; font-size: 13px; tracking: 1px;">TAX INVOICE & ORDER CONFIRMATION</p>
+      </div>
+
+      <div style="padding: 20px 24px; background-color: #fffbe0; border-bottom: 1px solid #fef08a; display: flex; justify-content: space-between;">
+        <div>
+          <p style="margin: 0; font-size: 15px; font-weight: bold; color: #92400e;">Invoice No: <span style="color: #b45309;">#${order.id}</span></p>
+          <p style="margin: 4px 0 0; font-size: 12px; color: #78350f;">Date: ${new Date(order.createdAt).toLocaleString('en-IN')}</p>
+        </div>
+      </div>
+
+      <div style="padding: 24px;">
+        <h3 style="margin: 0 0 12px 0; color: #111827; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #111827; padding-bottom: 6px;">Customer Details</h3>
+        <table style="width: 100%; font-size: 13px; color: #374151; margin-bottom: 24px; border-spacing: 0;">
+          <tr><td style="width: 130px; font-weight: bold; padding: 6px 0; color: #4b5563;">Name:</td><td style="font-weight: 600; color: #111827;">${order.customerName}</td></tr>
+          <tr><td style="font-weight: bold; padding: 6px 0; color: #4b5563;">Mobile:</td><td style="font-weight: 600; color: #111827;"><a href="tel:${order.mobile}" style="color: #2563eb; text-decoration: none;">${order.mobile}</a></td></tr>
+          <tr><td style="font-weight: bold; padding: 6px 0; color: #4b5563;">Delivery Address:</td><td style="color: #111827;">${order.address}</td></tr>
+          <tr><td style="font-weight: bold; padding: 6px 0; color: #4b5563;">Notes:</td><td style="color: #111827;">${order.notes || 'None'}</td></tr>
+        </table>
+
+        <h3 style="margin: 0 0 12px 0; color: #111827; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #111827; padding-bottom: 6px;">Ordered Items</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px;">
+          <thead>
+            <tr style="background-color: #f3f4f6; text-align: left; font-size: 11px; text-transform: uppercase; color: #4b5563;">
+              <th style="padding: 10px; border-bottom: 2px solid #e5e7eb;">Product</th>
+              <th style="padding: 10px; text-align: center; border-bottom: 2px solid #e5e7eb;">Qty</th>
+              <th style="padding: 10px; text-align: right; border-bottom: 2px solid #e5e7eb;">Unit Price</th>
+              <th style="padding: 10px; text-align: right; border-bottom: 2px solid #e5e7eb;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${listItemsHtml}
+          </tbody>
+        </table>
+
+        <div style="background-color: #fef3c7; border: 1px solid #fcd34d; padding: 16px; text-align: right; border-radius: 8px;">
+          <span style="font-size: 14px; color: #92400e; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Grand Total: </span>
+          <span style="font-size: 22px; color: #b45309; font-weight: 900; margin-left: 8px;">₹${order.totalAmount.toLocaleString('en-IN')}</span>
+        </div>
+      </div>
+
+      <div style="background-color: #f9fafb; padding: 16px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-weight: 600;">Garudan Fireworks Storefront Automated System</p>
+        <p style="margin: 4px 0 0; font-size: 11px; color: #9ca3af;">Delivered directly to ${recipient}</p>
+      </div>
+    </div>
+  `;
 
   if (transporter) {
     try {
       await transporter.sendMail({
-        from: `Garudan Order Alert <${process.env.SMTP_USER}>`,
+        from: `Garudan Order Alert <${senderEmail}>`,
         to: recipient,
         subject: mailSubject,
-        text: textBody
+        text: textBody,
+        html: htmlBody
       });
-      console.log(`✉️ ORDER EMAIL SENT SUCCESS-LY TO ${recipient}`);
-    } catch (err) {
-      console.error('❌ FAIL TO TRANSMIT ORDER MAIL NOTIFICATION:', err);
+      console.log(`✉️ ORDER INVOICE EMAIL SENT AUTOMATICALLY FROM ${senderEmail} TO ${recipient}`);
+      return { emailSent: true, emailError: null };
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
+      console.warn(`⚠️ SMTP transmission issue (${errMsg}). Order logged to console:`);
+      console.log(`=========================================\n`);
+      console.log(`⚠️  [ORDER NOTIFICATION LOG - RECIPIENT: ${recipient}]\n`);
+      console.log(`Subject: ${mailSubject}\n`);
+      console.log(`Body:\n${textBody}`);
+      console.log(`=========================================\n`);
+      return { emailSent: false, emailError: errMsg };
     }
   } else {
     console.log(`=========================================\n`);
-    console.log(`⚠️  [SIMULATED SMTP NOTIFICATION SENDOUT]\n`);
-    console.log(`To: ${recipient}`);
-    console.log(`Subject: ${mailSubject}`);
+    console.log(`⚠️  [SIMULATED SMTP NOTIFICATION SENDOUT - RECIPIENT: ${recipient}]\n`);
+    console.log(`Subject: ${mailSubject}\n`);
     console.log(`Body:\n${textBody}`);
     console.log(`=========================================\n`);
+    return { emailSent: false, emailError: 'SMTP transporter not initialized (SMTP_PASS environment variable missing or empty)' };
   }
 }
 
@@ -328,8 +403,31 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // JSON request parser
-  app.use(express.json());
+  // JSON request parser with higher payload limit for image file data
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+  // SMTP Configuration inspection endpoint
+  app.get('/api/smtp-config', (req, res) => {
+    const smtpUser = (process.env.SMTP_USER || 'garudancrackers@gmail.com').trim();
+    const recipient = (process.env.ADMIN_EMAIL_RECIPIENT || 'garudancrackers@gmail.com').trim();
+    const rawPass = process.env.SMTP_PASS || 'efzkvotyzyjwcmxu';
+    const cleanPass = rawPass.replace(/\s+/g, '').trim();
+    const maskedPass = cleanPass.length > 4 
+      ? '*'.repeat(cleanPass.length - 4) + cleanPass.slice(-4) 
+      : '****';
+
+    res.json({
+      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      senderUser: smtpUser,
+      recipientEmail: recipient,
+      maskedPassword: maskedPass,
+      isConfigured: cleanPass.length > 0
+    });
+  });
 
   // ---------------------- PRODUCTS ENDPOINTS ----------------------
   
@@ -455,8 +553,7 @@ async function startServer() {
     db.orders.push(newOrder);
     saveDB(db);
 
-    // Call mail dispatcher
-    await sendOrderMailNotification(newOrder);
+    console.log(`📲 [ORDER RECORDED]: ID ${newOrder.id} for ${newOrder.customerName} (₹${newOrder.totalAmount}). WhatsApp order generated.`);
 
     res.status(201).json(newOrder);
   });

@@ -62,17 +62,17 @@ export default function Navbar({
       </div>
 
       <nav className="bg-[#0a0812]/95 backdrop-blur-md border-b border-amber-500/20 shadow-[0_4px_25px_rgba(255,180,0,0.15)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 sm:h-20 gap-2">
             
             {/* Logo Brand Title with uploaded Garudan Logo */}
             <div 
-              className="flex items-center gap-3 cursor-pointer group select-none"
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer group select-none min-w-0 flex-1"
               onClick={() => handleNavClick('admin')}
               id="brand-logo"
               title="Garudan Crackers - Admin Console"
             >
-              <div className="relative w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 via-rose-500 to-purple-500 shadow-[0_0_20px_rgba(255,215,0,0.5)] group-hover:scale-105 transition-transform flex-shrink-0">
+              <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 via-rose-500 to-purple-500 shadow-[0_0_15px_rgba(255,215,0,0.4)] group-hover:scale-105 transition-transform flex-shrink-0">
                 <img 
                   src={garudanLogo} 
                   alt="Garudan Crackers Official Logo" 
@@ -80,12 +80,12 @@ export default function Navbar({
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div>
-                <span className="block font-sans font-black text-lg sm:text-xl tracking-tight uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-100 via-rose-300 to-amber-400 drop-shadow-[0_2px_10px_rgba(255,200,0,0.3)]">
+              <div className="min-w-0">
+                <span className="block font-sans font-black text-xs sm:text-lg md:text-xl tracking-tight uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-100 via-rose-300 to-amber-400 drop-shadow-[0_2px_10px_rgba(255,200,0,0.3)] truncate">
                   {translations.brandName}
                 </span>
-                <span className="block text-[9px] uppercase font-mono tracking-[0.2em] text-emerald-400 font-bold">
-                  ⚡ Sivakasi Majestic Pride • சிவகாசி
+                <span className="block text-[8px] sm:text-[9px] uppercase font-mono tracking-wider sm:tracking-[0.15em] text-emerald-400 font-bold truncate">
+                  ⚡ Sivakasi • சிவகாசி
                 </span>
               </div>
             </div>
@@ -143,16 +143,17 @@ export default function Navbar({
               </button>
             </div>
 
-            {/* Mobile hamburger menu trigger */}
-            <div className="flex md:hidden items-center gap-3">
+            {/* Mobile hamburger menu & right actions */}
+            <div className="flex md:hidden items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
               <button
                 onClick={openCart}
                 id="cart-button-mobile"
-                className="relative p-2 rounded-full bg-gradient-to-r from-rose-600 to-amber-500 text-white"
+                className="relative p-2 rounded-full bg-gradient-to-r from-rose-600 via-amber-500 to-purple-600 text-white shadow-md active:scale-95 transition-transform cursor-pointer"
+                title="View Cart"
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="w-4 h-4 text-white" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-black font-black text-[10px] w-5 h-5 flex items-center justify-center rounded-full border border-black">
+                  <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-black font-black text-[9px] w-4.5 h-4.5 flex items-center justify-center rounded-full border border-black animate-pulse">
                     {cartCount}
                   </span>
                 )}
@@ -161,17 +162,20 @@ export default function Navbar({
               <button
                 onClick={toggleLanguage}
                 id="lang-toggle-mobile"
-                className="flex items-center gap-1 p-2 rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-300 text-xs"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-300 text-[10px] font-bold uppercase transition-all hover:bg-amber-500/20 active:scale-95 cursor-pointer shadow-sm"
+                title="Switch Language / தமிழ்"
               >
-                <Globe className="w-4 h-4 text-cyan-400" />
+                <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span>{lang === 'en' ? 'தமிழ்' : 'EN'}</span>
               </button>
 
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 id="hamburger-trigger"
-                className="p-2 text-amber-400 hover:text-white focus:outline-none"
+                className="p-1.5 text-amber-400 hover:text-white focus:outline-none cursor-pointer rounded-lg hover:bg-amber-500/10 transition-colors"
+                aria-label="Toggle navigation menu"
               >
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {mobileMenuOpen ? <X className="w-6 h-6 text-amber-300" /> : <Menu className="w-6 h-6 text-amber-400" />}
               </button>
             </div>
 
@@ -180,7 +184,7 @@ export default function Navbar({
 
         {/* Mobile Drawer Navigation overlay */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-[#0d0918] border-t border-amber-500/20 px-4 py-4 space-y-3">
+          <div className="md:hidden bg-[#0d0918]/98 border-t border-amber-500/20 px-4 py-4 space-y-2.5 shadow-2xl animate-fade-in">
             {navItems.map((item) => {
               const isActive = currentRoute === item.key;
               return (
@@ -188,13 +192,14 @@ export default function Navbar({
                   key={item.key}
                   id={`nav-link-mobile-${item.key}`}
                   onClick={() => handleNavClick(item.key)}
-                  className={`block w-full text-left px-4 py-3 font-sans text-sm font-black uppercase tracking-widest rounded-lg transition-colors ${
+                  className={`flex items-center justify-between w-full text-left px-4 py-3 font-sans text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${
                     isActive 
-                      ? 'bg-gradient-to-r from-amber-500/20 to-purple-500/20 text-amber-300 border-l-4 border-amber-400' 
-                      : 'text-neutral-300 hover:bg-neutral-900 hover:text-white'
+                      ? 'bg-gradient-to-r from-amber-500/20 via-rose-500/10 to-purple-500/20 text-amber-300 border-l-4 border-amber-400 shadow-md' 
+                      : 'text-neutral-300 hover:bg-neutral-900/80 hover:text-white'
                   }`}
                 >
-                  {item.label}
+                  <span>{item.label}</span>
+                  {isActive && <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin-slow" />}
                 </button>
               );
             })}
