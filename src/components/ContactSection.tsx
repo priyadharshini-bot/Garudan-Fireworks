@@ -100,7 +100,7 @@ export default function ContactSection({ lang, translations }: ContactSectionPro
                 <Mail className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
                 <div>
                   <span className="block font-bold text-neutral-200 text-sm">Administrative Email</span>
-                  <span className="block text-xs text-mono text-[#D4AF37] mt-0.5">sales@garudancrackers.com, info@garudan.in</span>
+                  <span className="block text-xs text-mono text-[#D4AF37] mt-0.5">garudancrackers@gmail.com</span>
                 </div>
               </div>
 

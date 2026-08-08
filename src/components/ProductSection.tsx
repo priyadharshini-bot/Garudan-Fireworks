@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Product, Category, Language, TranslationSchema } from '../types';
 import CrackerVisual from './CrackerVisual';
-import { Search, Sparkles, ShoppingCart, Plus, Minus, Tag, Flame, LayoutGrid, List, MessageSquare } from 'lucide-react';
+import { Search, Sparkles, ShoppingCart, Plus, Minus, Tag, Flame, LayoutGrid, List, MessageSquare, ShoppingBag } from 'lucide-react';
 
 interface ProductSectionProps {
   products: Product[];
@@ -49,7 +49,7 @@ export default function ProductSection({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [isCompactListView, setIsCompactListView] = useState(false);
+  const [isCompactListView, setIsCompactListView] = useState(true);
 
   const filteredProducts = products.filter((p) => {
     const matchesSearch = 
@@ -133,6 +133,21 @@ export default function ProductSection({
             <span>{lang === 'en' ? 'Price List' : 'விலைப் பட்டியல்'}</span>
           </button>
         </div>
+      </div>
+
+      {/* Minimum Order Value Text */}
+      <div className="text-center text-xs sm:text-sm font-semibold text-amber-300/90 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-1 w-full">
+        <span className="font-bold text-amber-400 flex items-center gap-1.5">
+          <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
+          {lang === 'en' ? 'Minimum Order:' : 'குறைந்தபட்ச ஆர்டர்:'}
+        </span>
+        <span>
+          {lang === 'en' ? 'Tamil Nadu' : 'தமிழ்நாடு'}: <strong className="text-amber-200 font-bold">Rs 3000</strong>
+        </span>
+        <span className="text-amber-500/60 hidden sm:inline">•</span>
+        <span>
+          {lang === 'en' ? 'Other States' : 'பிற மாநிலங்கள்'}: <strong className="text-amber-200 font-bold">Rs 5000</strong>
+        </span>
       </div>
 
       {/* Control Panel: Search & Advanced Filters */}
