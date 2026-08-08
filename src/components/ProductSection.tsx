@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Product, Category, Language, TranslationSchema } from '../types';
 import CrackerVisual from './CrackerVisual';
+import BrandLogosBar from './BrandLogosBar';
 import { Search, Sparkles, ShoppingCart, Plus, Minus, Tag, Flame, LayoutGrid, List, MessageSquare, ShoppingBag } from 'lucide-react';
 
 interface ProductSectionProps {
@@ -15,6 +16,21 @@ interface ProductSectionProps {
   onAddToCart: (product: Product, quantity: number) => void;
   categories: Category[];
 }
+
+// Category Tamil translations for section headers
+const getCategoryTaName = (cat: string) => {
+  switch (cat) {
+    case 'Sparklers': return 'கம்பி மத்தாப்பு';
+    case 'Flower Pots': return 'பூச்சட்டி';
+    case 'Rockets': return 'ராக்கெட்';
+    case 'Atom Bombs': return 'ஆட்டம் பாம்';
+    case 'Fancy Crackers': return 'ஃபேன்சி & தரைச்சக்கரம்';
+    case 'Kids Special': return 'குழந்தைகள் சிறப்பு';
+    case 'Gift Boxes': return 'கிஃப்ட் பாக்ஸ்';
+    case 'Festival Combo Packs': return 'விழா சிறப்பு காம்போ';
+    default: return cat;
+  }
+};
 
 // Category color map for vibrant pills and borders
 const getCategoryGradient = (cat: Category | 'All' | string) => {
@@ -63,11 +79,26 @@ export default function ProductSection({
     return matchesSearch && matchesCategory;
   });
 
-  const getProductQty = (pId: string) => quantities[pId] || 1;
+  // Group filtered products by category for organized section display
+  const groupedProducts = categories.reduce((acc, cat) => {
+    const items = filteredProducts.filter((p) => p.category === cat);
+    if (items.length > 0) {
+      acc.push({ category: cat, items });
+    }
+    return acc;
+  }, [] as { category: Category; items: Product[] }[]);
+
+  const categorizedIds = new Set(groupedProducts.flatMap((g) => g.items.map((p) => p.id)));
+  const remainingItems = filteredProducts.filter((p) => !categorizedIds.has(p.id));
+  if (remainingItems.length > 0) {
+    groupedProducts.push({ category: 'Others' as Category, items: remainingItems });
+  }
+
+  const getProductQty = (pId: string) => quantities[pId] !== undefined ? quantities[pId] : 0;
 
   const handleQtyChange = (pId: string, delta: number) => {
     const current = getProductQty(pId);
-    const updated = Math.max(1, current + delta);
+    const updated = Math.max(0, current + delta);
     setQuantities({ ...quantities, [pId]: updated });
   };
 
@@ -79,8 +110,11 @@ export default function ProductSection({
   };
 
   return (
-    <section id="products-catalog-section" className="py-16 px-4 max-w-7xl mx-auto space-y-10 scroll-mt-24">
+    <section id="products-catalog-section" className="pt-2 sm:pt-4 pb-12 px-4 max-w-7xl mx-auto space-y-6 scroll-mt-20">
       
+      {/* Auto Scrolling Brand Logos Marquee */}
+      <BrandLogosBar />
+
       {/* Section Headings */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-purple-500/20 border border-amber-400/40 text-amber-300 text-xs font-black uppercase tracking-widest">
@@ -215,269 +249,381 @@ export default function ProductSection({
           </p>
         </div>
       ) : isCompactListView ? (
-        /* Compact Price List Table Layout */
-        <div className="overflow-x-auto rounded-2xl border border-amber-500/20 bg-[#130d22]/90 shadow-2xl backdrop-blur-md">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#1b1230] border-b border-amber-500/20 text-amber-300 font-mono text-[11px] uppercase tracking-wider">
-                <th className="py-3.5 px-4">Item Name / பொருள்</th>
-                <th className="py-3.5 px-4 hidden sm:table-cell">Category</th>
-                <th className="py-3.5 px-4">Wholesale Price</th>
-                <th className="py-3.5 px-4 text-center">Qty</th>
-                <th className="py-3.5 px-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-amber-500/10 text-xs">
-              {filteredProducts.map((p) => {
-                const qty = getProductQty(p.id);
-                const inStock = p.stock > 0;
-                const hasDiscount = p.originalPrice ? p.originalPrice > p.price : false;
+        /* Compact Price List View Grouped By Category */
+        <>
+          {/* Mobile View: Cards grouped by Category */}
+          <div className="sm:hidden space-y-8">
+            {groupedProducts.map((group) => (
+              <div key={group.category} className="space-y-3">
+                {/* Category Header Banner */}
+                <div className="flex items-center gap-2.5 pt-2 pb-1 border-b border-amber-500/20 sticky top-[72px] z-10 bg-[#0a0518]/95 backdrop-blur-md py-2">
+                  <span className={`px-3 py-1 rounded-xl bg-gradient-to-r ${getCategoryGradient(group.category)} text-xs font-black uppercase tracking-wider shadow-md flex items-center gap-1.5`}>
+                    <Flame className="w-3.5 h-3.5" />
+                    <span>{group.category}</span>
+                  </span>
+                  {lang === 'ta' && (
+                    <span className="text-xs text-amber-300 font-bold">
+                      {getCategoryTaName(group.category)}
+                    </span>
+                  )}
+                  <span className="text-xs text-amber-300/70 font-mono font-bold">
+                    ({group.items.length})
+                  </span>
+                  <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/30 to-transparent" />
+                </div>
 
-                return (
-                  <tr key={p.id} className="hover:bg-amber-500/5 transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-[#1e1538] border border-amber-500/20 flex items-center justify-center p-1 flex-shrink-0">
-                          <CrackerVisual type={p.image} className="w-full h-full object-contain" />
+                {/* Mobile Cards for this Category */}
+                <div className="space-y-3">
+                  {group.items.map((p) => {
+                    const qty = getProductQty(p.id);
+                    const inStock = p.stock > 0;
+                    const hasDiscount = p.originalPrice ? p.originalPrice > p.price : false;
+
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-3.5 rounded-2xl border border-amber-500/20 bg-[#130d22]/90 shadow-xl backdrop-blur-md flex flex-col gap-3"
+                      >
+                        {/* Top Row: Visual + Name & Category + Price */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-12 h-12 rounded-xl bg-[#1e1538] border border-amber-500/20 flex items-center justify-center p-1.5 flex-shrink-0">
+                              <CrackerVisual type={p.image} className="w-full h-full object-contain" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-sans font-bold text-white text-sm leading-snug truncate">
+                                {lang === 'en' ? p.nameEn : p.nameTa}
+                              </h4>
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20 mt-1">
+                                {p.category}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0">
+                            <div className="font-mono font-black text-amber-300 text-base">₹{p.price}</div>
+                            {hasDiscount && (
+                              <div className="text-[10px] font-mono text-neutral-500 line-through">₹{p.originalPrice}</div>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <span className="block font-sans font-bold text-white text-sm">
-                            {lang === 'en' ? p.nameEn : p.nameTa}
-                          </span>
-                          <span className="block text-[10px] text-neutral-400 sm:hidden">
-                            {p.category}
-                          </span>
+
+                        {/* Bottom Row: Quantity + Add to Cart Button */}
+                        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-amber-500/10">
+                          {/* Quantity Controls */}
+                          <div className="flex items-center justify-between bg-[#1a122e] rounded-xl p-1 border border-amber-500/20 w-28 flex-shrink-0">
+                            <button
+                              onClick={() => handleQtyChange(p.id, -1)}
+                              disabled={!inStock || qty <= 0}
+                              className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 cursor-pointer"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-xs font-mono font-bold text-white">
+                              {inStock ? qty : 0}
+                            </span>
+                            <button
+                              onClick={() => handleQtyChange(p.id, 1)}
+                              disabled={!inStock || qty >= p.stock}
+                              className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Add to Cart Button */}
+                          <button
+                            disabled={!inStock}
+                            onClick={() => {
+                              const qtyToAdd = qty > 0 ? qty : 1;
+                              onAddToCart(p, qtyToAdd);
+                              setQuantities((prev) => ({ ...prev, [p.id]: 0 }));
+                            }}
+                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 flex-1 shadow-md ${
+                              inStock
+                                ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-rose-500 text-black active:scale-95'
+                                : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                            }`}
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>{inStock ? translations.addToCart : translations.outOfStock}</span>
+                          </button>
                         </div>
                       </div>
-                    </td>
-                    <td className="py-3 px-4 hidden sm:table-cell">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                        {p.category}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="font-mono font-black text-amber-300 text-sm">₹{p.price}</span>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View: Table Grouped by Category */}
+          <div className="hidden sm:block overflow-x-auto rounded-2xl border border-amber-500/20 bg-[#130d22]/90 shadow-2xl backdrop-blur-md">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#1b1230] border-b border-amber-500/20 text-amber-300 font-mono text-[11px] uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Item Name / பொருள்</th>
+                  <th className="py-3.5 px-4">Category</th>
+                  <th className="py-3.5 px-4">Wholesale Price</th>
+                  <th className="py-3.5 px-4 text-center">Qty</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-500/10 text-xs">
+                {groupedProducts.map((group) => (
+                  <Fragment key={group.category}>
+                    {/* Category Section Header Row */}
+                    <tr className="bg-[#1c1233] border-y-2 border-amber-500/30">
+                      <td colSpan={5} className="py-2.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-lg bg-gradient-to-r ${getCategoryGradient(group.category)} text-xs font-black uppercase tracking-wider shadow flex items-center gap-1.5`}>
+                            <Flame className="w-3.5 h-3.5" />
+                            <span>{group.category}</span>
+                            {lang === 'ta' && (
+                              <span className="font-normal opacity-90">({getCategoryTaName(group.category)})</span>
+                            )}
+                          </span>
+                          <span className="text-xs font-mono text-amber-300/80 font-bold">
+                            ({group.items.length} {lang === 'en' ? 'Items' : 'வகைகள்'})
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Category Items */}
+                    {group.items.map((p) => {
+                      const qty = getProductQty(p.id);
+                      const inStock = p.stock > 0;
+                      const hasDiscount = p.originalPrice ? p.originalPrice > p.price : false;
+
+                      return (
+                        <tr key={p.id} className="hover:bg-amber-500/5 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-[#1e1538] border border-amber-500/20 flex items-center justify-center p-1 flex-shrink-0">
+                                <CrackerVisual type={p.image} className="w-full h-full object-contain" />
+                              </div>
+                              <div>
+                                <span className="block font-sans font-bold text-white text-sm">
+                                  {lang === 'en' ? p.nameEn : p.nameTa}
+                                </span>
+                                <span className="block text-[10px] text-neutral-400 sm:hidden">
+                                  {p.category}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                              {p.category}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="font-mono font-black text-amber-300 text-sm">₹{p.price}</span>
+                              {hasDiscount && (
+                                <span className="text-[10px] font-mono text-neutral-500 line-through">₹{p.originalPrice}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-center gap-1.5 bg-[#1a122e] rounded-lg p-1 border border-amber-500/20 w-24 mx-auto">
+                              <button
+                                onClick={() => handleQtyChange(p.id, -1)}
+                                disabled={!inStock || qty <= 0}
+                                className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 cursor-pointer"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-6 text-center text-xs font-mono font-bold text-white">
+                                {inStock ? qty : 0}
+                              </span>
+                              <button
+                                onClick={() => handleQtyChange(p.id, 1)}
+                                disabled={!inStock || qty >= p.stock}
+                                className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 cursor-pointer"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              disabled={!inStock}
+                              onClick={() => {
+                                const qtyToAdd = qty > 0 ? qty : 1;
+                                onAddToCart(p, qtyToAdd);
+                                setQuantities((prev) => ({ ...prev, [p.id]: 0 }));
+                              }}
+                              className={`px-3.5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-md ${
+                                inStock
+                                  ? 'bg-gradient-to-r from-amber-400 to-rose-500 text-black hover:scale-105 active:scale-95'
+                                  : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                              }`}
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                              <span>{inStock ? translations.addToCart : translations.outOfStock}</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        /* Grid Layout Grouped by Category */
+        <div className="space-y-10">
+          {groupedProducts.map((group) => (
+            <div key={group.category} className="space-y-5">
+              {/* Category Header Banner */}
+              <div className="flex items-center gap-3 pt-2 pb-2 border-b border-amber-500/20">
+                <span className={`px-4 py-1.5 rounded-xl bg-gradient-to-r ${getCategoryGradient(group.category)} text-xs font-black uppercase tracking-wider shadow-lg flex items-center gap-2`}>
+                  <Flame className="w-4 h-4" />
+                  <span>{group.category}</span>
+                  {lang === 'ta' && (
+                    <span className="font-normal opacity-90">({getCategoryTaName(group.category)})</span>
+                  )}
+                </span>
+                <span className="text-xs font-mono font-bold text-amber-300/80">
+                  ({group.items.length} {lang === 'en' ? 'Items' : 'வகைகள்'})
+                </span>
+                <div className="h-[1px] flex-1 bg-gradient-to-r from-amber-500/30 via-rose-500/20 to-transparent" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {group.items.map((p) => {
+                  const qty = getProductQty(p.id);
+                  const inStock = p.stock > 0;
+                  const hasDiscount = p.originalPrice ? p.originalPrice > p.price : false;
+                  const discountPct = hasDiscount 
+                    ? Math.round(((p.originalPrice! - p.price) / p.originalPrice!) * 100) 
+                    : 0;
+
+                  return (
+                    <div
+                      key={p.id}
+                      id={`product-card-${p.id}`}
+                      className="p-5 rounded-2xl bg-gradient-to-b from-[#18112b] to-[#110a20] border border-amber-500/20 hover:border-amber-400/80 hover:shadow-[0_0_30px_rgba(255,180,0,0.25)] transition-all duration-300 flex flex-col justify-between gap-4 group relative overflow-hidden"
+                    >
+                      {/* Accent colorful top stroke */}
+                      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-rose-500 to-purple-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+
+                      {/* Visual discount/featured badge */}
+                      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 items-start">
+                        {p.isFeatured && (
+                          <span className="px-3 py-1 rounded-full bg-gradient-to-r from-rose-600 to-red-500 text-white text-[9px] uppercase font-mono font-black tracking-widest shadow-lg">
+                            🔥 {lang === 'en' ? 'Bestseller' : 'சிறப்பு'}
+                          </span>
+                        )}
                         {hasDiscount && (
-                          <span className="text-[10px] font-mono text-neutral-500 line-through">₹{p.originalPrice}</span>
+                          <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-[9px] uppercase font-mono font-black tracking-widest flex items-center gap-1 shadow-lg">
+                            <Tag className="w-2.5 h-2.5" />
+                            {discountPct}% OFF
+                          </span>
                         )}
                       </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-center gap-1.5 bg-[#1a122e] rounded-lg p-1 border border-amber-500/20 w-24 mx-auto">
-                        <button
-                          onClick={() => handleQtyChange(p.id, -1)}
-                          disabled={!inStock || qty <= 1}
-                          className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 cursor-pointer"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-6 text-center text-xs font-mono font-bold text-white">
-                          {inStock ? qty : 0}
-                        </span>
-                        <button
-                          onClick={() => handleQtyChange(p.id, 1)}
-                          disabled={!inStock || qty >= p.stock}
-                          className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <a
-                          href={generateProductWhatsAppUrl(p, qty)}
-                          target="_blank"
-                          rel="noreferrer"
-                          id={`wa-table-btn-${p.id}`}
-                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider bg-emerald-600/90 hover:bg-emerald-500 text-white transition-all cursor-pointer inline-flex items-center gap-1 border border-emerald-400/30 shadow-md hover:scale-105"
-                          title={lang === 'en' ? 'Direct WhatsApp Order' : 'வாட்ஸ்அப் ஆர்டர்'}
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          <span className="hidden sm:inline">{lang === 'en' ? 'WhatsApp' : 'வாட்ஸ்அப்'}</span>
-                        </a>
 
+                      {/* Vector Image Illustration Area */}
+                      <div className="w-full aspect-square rounded-xl overflow-hidden bg-[#1f1638] border border-amber-500/10 relative flex items-center justify-center group-hover:scale-[1.02] transition-transform">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-purple-500/10 pointer-events-none" />
+                        <CrackerVisual type={p.image} className="w-3/4 h-3/4 object-contain relative z-10" />
+                        
+                        {/* Backdrop stock indicator label */}
+                        <div className="absolute bottom-3 right-3 z-10">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-mono font-bold ${
+                            inStock 
+                              ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' 
+                              : 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
+                          }`}>
+                            {inStock ? `Stock: ${p.stock}` : translations.outOfStock}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Content Space */}
+                      <div className="mt-2 space-y-2.5 flex-grow flex flex-col justify-between">
+                        <div className="space-y-1.5">
+                          <span className="inline-block px-2.5 py-0.5 rounded-md text-[9px] font-mono uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold">
+                            {p.category}
+                          </span>
+                          <h3 className="font-sans font-black uppercase text-base text-white group-hover:text-amber-300 transition-colors tracking-tight h-12 line-clamp-2">
+                            {lang === 'en' ? p.nameEn : p.nameTa}
+                          </h3>
+                          <p className="text-xs text-neutral-300 line-clamp-2 h-8 font-sans leading-snug">
+                            {lang === 'en' ? p.descriptionEn : p.descriptionTa}
+                          </p>
+                        </div>
+
+                        {/* Price Row details */}
+                        <div className="flex items-baseline gap-2 pt-2 border-t border-amber-500/20">
+                          <span className="font-sans font-black text-xl text-amber-300 drop-shadow">
+                            ₹{p.price.toLocaleString('en-IN')}
+                          </span>
+                          {hasDiscount && (
+                            <span className="text-xs text-neutral-400 line-through">
+                              ₹{p.originalPrice?.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Quantity + Add Cart Section */}
+                      <div className="mt-2 pt-3 flex items-center justify-between gap-2 border-t border-amber-500/20">
+                        
+                        {/* Quantity adjustment logic */}
+                        <div className="flex items-center rounded-xl bg-[#130b20] border border-amber-500/30 py-1.5 px-2">
+                          <button
+                            onClick={() => handleQtyChange(p.id, -1)}
+                            disabled={!inStock || qty <= 0}
+                            id={`pqty-dec-${p.id}`}
+                            className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-7 text-center text-sm font-black font-mono text-white">
+                            {inStock ? qty : 0}
+                          </span>
+                          <button
+                            onClick={() => handleQtyChange(p.id, 1)}
+                            disabled={!inStock || qty >= p.stock}
+                            id={`pqty-inc-${p.id}`}
+                            className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Add action button */}
                         <button
                           disabled={!inStock}
                           onClick={() => {
-                            onAddToCart(p, qty);
-                            setQuantities({ ...quantities, [p.id]: 1 });
+                            const qtyToAdd = qty > 0 ? qty : 1;
+                            onAddToCart(p, qtyToAdd);
+                            setQuantities((prev) => ({ ...prev, [p.id]: 0 }));
                           }}
-                          className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1 ${
+                          id={`pqty-add-${p.id}`}
+                          className={`flex-grow flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer ${
                             inStock
-                              ? 'bg-gradient-to-r from-amber-400 to-rose-500 text-black hover:scale-105'
-                              : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                              ? 'bg-gradient-to-r from-amber-400 via-rose-500 to-purple-600 hover:scale-[1.03] text-black font-extrabold shadow-[0_0_20px_rgba(255,180,0,0.3)] active:scale-[0.98]'
+                              : 'bg-neutral-900 border border-neutral-800 text-neutral-500 cursor-not-allowed'
                           }`}
                         >
-                          <ShoppingCart className="w-3 h-3" />
-                          <span className="hidden sm:inline">{inStock ? translations.addToCart : translations.outOfStock}</span>
-                          <span className="sm:hidden">{inStock ? '+' : 'X'}</span>
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          <span>{inStock ? translations.addToCart : translations.outOfStock}</span>
                         </button>
+
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        /* Grid Layout */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((p) => {
-            const qty = getProductQty(p.id);
-            const inStock = p.stock > 0;
-            const hasDiscount = p.originalPrice ? p.originalPrice > p.price : false;
-            const discountPct = hasDiscount 
-              ? Math.round(((p.originalPrice! - p.price) / p.originalPrice!) * 100) 
-              : 0;
 
-            return (
-              <div
-                key={p.id}
-                id={`product-card-${p.id}`}
-                className="p-5 rounded-2xl bg-gradient-to-b from-[#18112b] to-[#110a20] border border-amber-500/20 hover:border-amber-400/80 hover:shadow-[0_0_30px_rgba(255,180,0,0.25)] transition-all duration-300 flex flex-col justify-between gap-4 group relative overflow-hidden"
-              >
-                {/* Accent colorful top stroke */}
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-rose-500 to-purple-500 opacity-60 group-hover:opacity-100 transition-opacity" />
-
-                {/* Floating Direct WhatsApp Order Badge Button */}
-                <a
-                  href={generateProductWhatsAppUrl(p, qty)}
-                  target="_blank"
-                  rel="noreferrer"
-                  id={`wa-direct-float-${p.id}`}
-                  className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] font-black uppercase tracking-wider shadow-lg shadow-emerald-950/70 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-emerald-300/40"
-                  title={lang === 'en' ? 'Direct WhatsApp Order' : 'வாட்ஸ்அப் மூலம் ஆர்டர் செய்ய'}
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-white animate-pulse" />
-                  <span className="font-sans font-extrabold text-[10px]">
-                    {lang === 'en' ? 'Direct WhatsApp' : 'வாட்ஸ்அப்'}
-                  </span>
-                </a>
-
-                {/* Visual discount/featured badge */}
-                <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 items-start">
-                  {p.isFeatured && (
-                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-rose-600 to-red-500 text-white text-[9px] uppercase font-mono font-black tracking-widest shadow-lg">
-                      🔥 {lang === 'en' ? 'Bestseller' : 'சிறப்பு'}
-                    </span>
-                  )}
-                  {hasDiscount && (
-                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-[9px] uppercase font-mono font-black tracking-widest flex items-center gap-1 shadow-lg">
-                      <Tag className="w-2.5 h-2.5" />
-                      {discountPct}% OFF
-                    </span>
-                  )}
-                </div>
-
-                {/* Vector Image Illustration Area */}
-                <div className="w-full aspect-square rounded-xl overflow-hidden bg-[#1f1638] border border-amber-500/10 relative flex items-center justify-center group-hover:scale-[1.02] transition-transform">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-purple-500/10 pointer-events-none" />
-                  <CrackerVisual type={p.image} className="w-3/4 h-3/4 object-contain relative z-10" />
-                  
-                  {/* Backdrop stock indicator label */}
-                  <div className="absolute bottom-3 right-3 z-10">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-mono font-bold ${
-                      inStock 
-                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' 
-                        : 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
-                    }`}>
-                      {inStock ? `Stock: ${p.stock}` : translations.outOfStock}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content Space */}
-                <div className="mt-2 space-y-2.5 flex-grow flex flex-col justify-between">
-                  <div className="space-y-1.5">
-                    <span className="inline-block px-2.5 py-0.5 rounded-md text-[9px] font-mono uppercase tracking-wider bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold">
-                      {p.category}
-                    </span>
-                    <h3 className="font-sans font-black uppercase text-base text-white group-hover:text-amber-300 transition-colors tracking-tight h-12 line-clamp-2">
-                      {lang === 'en' ? p.nameEn : p.nameTa}
-                    </h3>
-                    <p className="text-xs text-neutral-300 line-clamp-2 h-8 font-sans leading-snug">
-                      {lang === 'en' ? p.descriptionEn : p.descriptionTa}
-                    </p>
-                  </div>
-
-                  {/* Price Row details */}
-                  <div className="flex items-baseline gap-2 pt-2 border-t border-amber-500/20">
-                    <span className="font-sans font-black text-xl text-amber-300 drop-shadow">
-                      ₹{p.price.toLocaleString('en-IN')}
-                    </span>
-                    {hasDiscount && (
-                      <span className="text-xs text-neutral-400 line-through">
-                        ₹{p.originalPrice?.toLocaleString('en-IN')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quantity + Add Cart Section */}
-                <div className="mt-2 pt-3 flex items-center justify-between gap-2 border-t border-amber-500/20">
-                  
-                  {/* Quantity adjustment logic */}
-                  <div className="flex items-center rounded-xl bg-[#130b20] border border-amber-500/30 py-1.5 px-2">
-                    <button
-                      onClick={() => handleQtyChange(p.id, -1)}
-                      disabled={!inStock}
-                      id={`pqty-dec-${p.id}`}
-                      className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="w-7 text-center text-sm font-black font-mono text-white">
-                      {inStock ? qty : 0}
-                    </span>
-                    <button
-                      onClick={() => handleQtyChange(p.id, 1)}
-                      disabled={!inStock || qty >= p.stock}
-                      id={`pqty-inc-${p.id}`}
-                      className="p-1 text-neutral-400 hover:text-amber-300 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Direct WhatsApp Action Button */}
-                  <a
-                    href={generateProductWhatsAppUrl(p, qty)}
-                    target="_blank"
-                    rel="noreferrer"
-                    id={`pqty-wa-${p.id}`}
-                    className="py-3 px-3 rounded-xl text-xs font-black bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/40 transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:scale-105 active:scale-95"
-                    title={lang === 'en' ? 'Direct WhatsApp Order' : 'வாட்ஸ்அப் ஆர்டர்'}
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span className="hidden xl:inline text-[10px] uppercase font-bold">{lang === 'en' ? 'WhatsApp' : 'வாட்ஸ்அப்'}</span>
-                  </a>
-
-                  {/* Add action button */}
-                  <button
-                    disabled={!inStock}
-                    onClick={() => {
-                      onAddToCart(p, qty);
-                      setQuantities({ ...quantities, [p.id]: 1 });
-                    }}
-                    id={`pqty-add-${p.id}`}
-                    className={`flex-grow flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer ${
-                      inStock
-                        ? 'bg-gradient-to-r from-amber-400 via-rose-500 to-purple-600 hover:scale-[1.03] text-black font-extrabold shadow-[0_0_20px_rgba(255,180,0,0.3)] active:scale-[0.98]'
-                        : 'bg-neutral-900 border border-neutral-800 text-neutral-500 cursor-not-allowed'
-                    }`}
-                  >
-                    <ShoppingCart className="w-3.5 h-3.5" />
-                    <span>{inStock ? translations.addToCart : translations.outOfStock}</span>
-                  </button>
-
-                </div>
-
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 

@@ -571,6 +571,23 @@ async function startServer() {
     res.json(db.orders[oIdx]);
   });
 
+  // Delete single order log
+  app.delete('/api/orders/:id', (req, res) => {
+    const db = loadDB();
+    const filtered = db.orders.filter((o) => o.id !== req.params.id);
+    db.orders = filtered;
+    saveDB(db);
+    res.json({ success: true, message: 'Order deleted successfully' });
+  });
+
+  // Clear all sales history orders
+  app.delete('/api/orders', (req, res) => {
+    const db = loadDB();
+    db.orders = [];
+    saveDB(db);
+    res.json({ success: true, message: 'All sales history cleared' });
+  });
+
   // ---------------------- OFFERS ENDPOINTS ----------------------
 
   // Get offers list

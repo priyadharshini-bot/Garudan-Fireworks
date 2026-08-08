@@ -23,6 +23,8 @@ interface AdminPanelProps {
   onEditProduct: (pId: string, updated: Partial<Product>) => Promise<void>;
   onDeleteProduct: (pId: string) => Promise<void>;
   onUpdateOrderStatus: (oId: string, status: Order['status']) => Promise<void>;
+  onDeleteOrder?: (oId: string) => Promise<void>;
+  onClearAllOrders?: () => Promise<void>;
   onAddOffer: (off: Omit<Offer, 'id'>) => Promise<void>;
   onToggleOffer: (id: string) => Promise<void>;
   onDeleteOffer: (id: string) => Promise<void>;
@@ -40,6 +42,8 @@ export default function AdminPanel({
   onEditProduct,
   onDeleteProduct,
   onUpdateOrderStatus,
+  onDeleteOrder,
+  onClearAllOrders,
   onAddOffer,
   onToggleOffer,
   onDeleteOffer,
@@ -328,14 +332,31 @@ export default function AdminPanel({
           {/* Quick Toolbar */}
           <div className="flex flex-wrap items-center gap-3">
             {activeTab === 'orders' && (
-              <button
-                onClick={handleExportCSV}
-                id="export-orders-btn"
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-bold font-sans text-xs rounded-xl shadow-[0_4px_15px_rgba(39,174,96,0.3)] transition-all cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export Orders to Excel</span>
-              </button>
+              <>
+                <button
+                  onClick={handleExportCSV}
+                  id="export-orders-btn"
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-bold font-sans text-xs rounded-xl shadow-[0_4px_15px_rgba(39,174,96,0.3)] transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export Orders to Excel</span>
+                </button>
+
+                {onClearAllOrders && orders.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (confirm(lang === 'en' ? 'Are you sure you want to clear all sales history orders?' : 'அனைத்து ஆர்டர் பதிவுகளையும் நீக்க விரும்புகிறீர்களா?')) {
+                        onClearAllOrders();
+                      }
+                    }}
+                    id="clear-all-orders-btn"
+                    className="flex items-center gap-2 px-4 py-2 bg-rose-900/60 hover:bg-rose-600 text-rose-200 hover:text-white font-bold font-sans text-xs rounded-xl border border-rose-500/30 transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{lang === 'en' ? 'Clear Sales History' : 'விற்பனை வரலாற்றை நீக்கு'}</span>
+                  </button>
+                )}
+              </>
             )}
 
             {onLogout && (
@@ -921,7 +942,7 @@ export default function AdminPanel({
                           </span>
                         </div>
 
-                        {/* Status Select actionizer */}
+                        {/* Status Select actionizer & Delete button */}
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-neutral-400 font-semibold uppercase font-mono">Fulfillment Status:</span>
                           <select
@@ -940,6 +961,20 @@ export default function AdminPanel({
                             <option value="Delivered" className="bg-neutral-950 text-emerald-400">Delivered</option>
                             <option value="Cancelled" className="bg-neutral-950 text-red-400">Cancelled</option>
                           </select>
+
+                          {onDeleteOrder && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete order ${o.id}?`)) {
+                                  onDeleteOrder(o.id);
+                                }
+                              }}
+                              title="Delete Order Log"
+                              className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
 

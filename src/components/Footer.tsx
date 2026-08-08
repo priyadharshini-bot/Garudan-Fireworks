@@ -120,11 +120,16 @@ export default function Footer({ lang, onNavigate, isAdmin = false }: FooterProp
             <span className="block text-xs font-bold text-white">Sivakasi Packaged</span>
             <span className="block text-[10px] text-neutral-400">100% Licensed Handcrafted</span>
           </div>
-          <div className="flex flex-col items-center justify-center p-2">
-            <Sparkles className="w-6 h-6 text-rose-400 mb-1 animate-spin-slow" />
-            <span className="block text-xs font-bold text-white">WhatsApp Direct Desk</span>
-            <span className="block text-[10px] text-neutral-400">+91 90922 68462</span>
-          </div>
+          <a 
+            href="https://wa.me/919092268462?text=Hi%20Garudan%20Crackers,%20I'd%20like%20to%20order%20crackers!"
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-col items-center justify-center p-2 hover:opacity-80 transition-opacity cursor-pointer group"
+          >
+            <Sparkles className="w-6 h-6 text-emerald-400 mb-1 group-hover:scale-110 transition-transform" />
+            <span className="block text-xs font-bold text-emerald-400">WhatsApp Direct Desk</span>
+            <span className="block text-[10px] text-neutral-300 font-mono">+91 90922 68462</span>
+          </a>
         </div>
 
         {/* SEO Keywords & Tags Section */}

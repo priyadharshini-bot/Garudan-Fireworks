@@ -1,0 +1,155 @@
+{
+  "products": [
+    {
+      "id": "spk-1",
+      "nameEn": "Electric Sparklers (10cm)",
+      "nameTa": "மின்சார கம்பி மத்தாப்பு",
+      "category": "Sparklers",
+      "price": 120,
+      "originalPrice": 180,
+      "descriptionEn": "Golden sparkling wires that burn with high-density bright golden sparks. Completely safe for kids under supervision.",
+      "descriptionTa": "அடர்ந்த தங்க நிற பொறிகளுடன் எரியும் பாதுகாப்பான மின்சார கம்பி மத்தாப்பு. குழந்தைகள் பயன்படுத்த உகந்தது.",
+      "image": "sparkler",
+      "stock": 138,
+      "isFeatured": true
+    },
+    {
+      "id": "spk-2",
+      "nameEn": "Tri-Colour Fireworks Sparklers (30cm)",
+      "nameTa": "மும்வண்ண கம்பி மத்தாப்பு",
+      "category": "Sparklers",
+      "price": 240,
+      "originalPrice": 350,
+      "descriptionEn": "Extra-long sparklers that change colors sequentially from Red to Green, and finally dazzling Silver.",
+      "descriptionTa": "சிவப்பு, பச்சை மற்றும் வெள்ளி நிறமாக மாறி எரியும் கூடுதல் நீளமான மும்வண்ண கம்பி மத்தாப்பு.",
+      "image": "sparkler_multi",
+      "stock": 117,
+      "isFeatured": false
+    },
+    {
+      "id": "flp-1",
+      "nameEn": "Golden Fountain Flower Pots",
+      "nameTa": "தங்க பூந்தொட்டி (பெரியது)",
+      "category": "Flower Pots",
+      "price": 180,
+      "originalPrice": 280,
+      "descriptionEn": "Produces an incredibly tall fountain of golden sparks resembling a beautiful, gleaming tree.",
+      "descriptionTa": "மிக உயரமான தங்க நிற ஒளிரும் பூந்தொட்டி ஊற்று. பார்ப்பதற்கு மரம் போல் பிரம்மாண்டமாக இருக்கும்.",
+      "image": "flowerpot_gold",
+      "stock": 90,
+      "isFeatured": true
+    },
+    {
+      "id": "flp-2",
+      "nameEn": "Color Changing Deluxe Pots",
+      "nameTa": "நிறம் மாறும் டீலக்ஸ் பூந்தொட்டி",
+      "category": "Flower Pots",
+      "price": 320,
+      "originalPrice": 450,
+      "descriptionEn": "Fountain shoots bright firework sparks that shift colors three times: Violet, Crimson, and Emerald.",
+      "descriptionTa": "ஊதா, சிவப்பு மற்றும் மரகத பச்சை என மும்முறை வர்ணங்கள் மாறும் சிறப்பு பூந்தொட்டி.",
+      "image": "flowerpot_color",
+      "stock": 75,
+      "isFeatured": false
+    },
+    {
+      "id": "rkt-1",
+      "nameEn": "Sky-Screaming Whistle Rockets",
+      "nameTa": "விசில் சப்த வான ராக்கெட்",
+      "category": "Rockets",
+      "price": 250,
+      "originalPrice": 380,
+      "descriptionEn": "Sails high into the darkness with a sharp whistling sound, exploding into a beautiful silver crackling cloud.",
+      "descriptionTa": "விசில் சப்தத்துடன் வானில் உயர்ந்து சென்று வெள்ளி நிற பூக்களாக வெடிக்கும் அதிநவீன ராக்கெட்.",
+      "image": "rocket_whistle",
+      "stock": 110,
+      "isFeatured": true
+    },
+    {
+      "id": "rkt-2",
+      "nameEn": "Luminous Chaser Rockets",
+      "nameTa": "வண்ண ஒளிரும் சேஸர் ராக்கெட்",
+      "category": "Rockets",
+      "price": 450,
+      "originalPrice": 600,
+      "descriptionEn": "A pack of 5 elite rockets shooting extremely high and creating giant multi-colored rings in the sky.",
+      "descriptionTa": "விண்வெளியில் பெரிய வண்ணமயமான வட்டங்களை உருவாக்கும் 5 பிரீமியம் ராக்கெட்டுகள் அடங்கிய தொகுப்பு.",
+      "image": "rocket_pack",
+      "stock": 60,
+      "isFeatured": true
+    },
+    {
+      "id": "bom-1",
+      "nameEn": "Hydro-Power Atom Bomb (Pack of 5)",
+      "nameTa": "ஹைட்ரோ பவர் ஆட்டம் பாம்",
+      "category": "Atom Bombs",
+      "price": 150,
+      "originalPrice": 250,
+      "descriptionEn": "The pride of South India. Traditional green-threaded bomb with a thunderous ear-splitting explosion.",
+      "descriptionTa": "தென்னிந்தியாவின் பெருமை மிகு பாரம்பரிய நூல் பாம். காதுகளை அதிர வைக்கும் இடி போன்ற பேரொலி கொண்டது.",
+      "image": "bomb_green",
+      "stock": 200,
+      "isFeatured": false
+    },
+    {
+      "id": "bom-2",
+      "nameEn": "Classic King Kong Mega Bomb",
+      "nameTa": "கிங் காங் மெகா பாம்",
+      "category": "Atom Bombs",
+      "price": 290,
+      "originalPrice": 420,
+      "descriptionEn": "Maximum explosive permissible force. Handcrafted for a deep, rumbling echo that vibrates the ground.",
+      "descriptionTa": "அடரிக்கப்பட்ட உச்சபட்ச ஒலி அளவு கொண்ட மெகா குண்டு. அதிர்வை ஏற்படுத்தும் பேரொலி.",
+      "image": "bomb_red",
+      "stock": 80,
+      "isFeatured": true
+    },
+    {
+      "id": "fcy-1",
+      "nameEn": "12-Shot Sky Chandelier Cake",
+      "nameTa": "12 ஷாட்ஸ் ஸ்கை சாண்டிலியர்",
+      "category": "Fancy Crackers",
+      "price": 590,
+      "originalPrice": 900,
+      "descriptionEn": "A compact cake that fires 12 consecutive shots of luxurious golden palm trees and glitter into the clouds.",
+      "descriptionTa": "தொடர்ச்சியாக 12 முறை வானில் சென்று தங்க நிற பனைமர இலை வடிவங்களில் வெடிக்கும் சாண்டிலியர்.",
+      "image": "fancy_cake12",
+      "stock": 45,
+      "isFeatured": true
+    },
+    {
+      "id": "fcy-2",
+      "nameEn": "30-Shot Golden Willow Aerial Show",
+      "nameTa": "30 ஷாட்ஸ் கோல்டன் வில்லோ",
+      "category": "Fancy Crackers",
+      "price": 1250,
+      "originalPrice": 1950,
+      "descriptionEn": "Professional-grade luxury aerial fireworks showing 30 stunning willow cascades in synchronized fire intervals.",
+      "descriptionTa": "அதிநவீன ஏரியல் ஷோ. 30 முறைகள் தொடர்ந்து வெடித்து தங்க நிற சிதறல்களை வாரி வழங்கும் வானவேடிக்கை.",
+      "image": "fancy_cake30",
+      "stock": 25,
+      "isFeatured": true
+    }
+  ],
+  "orders": [],
+  "offers": [
+    {
+      "id": "off-1",
+      "code": "DIWALI2026",
+      "discountPercentage": 15,
+      "active": true,
+      "minOrderValue": 2000,
+      "descriptionEn": "Unlock 15% EXTRA Discount on orders above ₹2,000! Apply on Checkout.",
+      "descriptionTa": "₹2,000க்கு மேல் வாங்கும் ஆர்டர்களுக்கு கூடுதலாக 15% வரை தள்ளுபடி!"
+    },
+    {
+      "id": "off-2",
+      "code": "GARUDANPREMIUM",
+      "discountPercentage": 25,
+      "active": true,
+      "minOrderValue": 5000,
+      "descriptionEn": "Mega Festive Splurge: Flat 25% off for royal orders over ₹5,000!",
+      "descriptionTa": "₹5,000க்கு மேலான ஆர்டர்களுக்கு 25% வரை அதிரடி தள்ளுபடி!"
+    }
+  ]
+}

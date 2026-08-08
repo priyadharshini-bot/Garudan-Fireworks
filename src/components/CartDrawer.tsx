@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { CartItem, Language, TranslationSchema, Offer } from '../types';
 import CrackerVisual from './CrackerVisual';
 import { X, Trash2, Tag, Send, AlertTriangle, ArrowRight, MessageSquare, CheckCircle, Mail } from 'lucide-react';
@@ -48,6 +48,20 @@ export default function CartDrawer({
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState('');
 
+  // Lock body & document scrolling when the cart drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalBodyOverflow;
+        document.documentElement.style.overflow = originalHtmlOverflow;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Calculate prices
@@ -84,53 +98,49 @@ export default function CartDrawer({
 
   // Build formatted text for WhatsApp
   const generateWhatsAppUrl = () => {
-    const space = '%20';
-    const newline = '%0A';
-    
-    let text = `*🚨 NEW CELEBRATION ORDER - GARUDAN CRACKERS* 🎇${newline}${newline}`;
-    text += `*Customer Details:*${newline}`;
-    text += `• Name: ${customerName}${newline}`;
-    text += `• Phone: ${mobile}${newline}`;
-    text += `• Address: ${address}${newline}`;
-    if (notes) text += `• Instructions: ${notes}${newline}`;
-    text += `${newline}*Itemized Cart:*${newline}`;
+    let text = `*🚨 NEW CELEBRATION ORDER - GARUDAN CRACKERS* 🎇\n\n`;
+    text += `*Customer Details:*\n`;
+    text += `• Name: ${customerName}\n`;
+    text += `• Phone: ${mobile}\n`;
+    text += `• Address: ${address}\n`;
+    if (notes) text += `• Instructions: ${notes}\n`;
+    text += `\n*Itemized Cart:*\n`;
     
     cartItems.forEach((item, index) => {
-      const name = lang === 'en' ? item.product.nameEn : item.product.nameTa;
-      text += `${index + 1}. ${name} [Qty: ${item.quantity}] - ₹${(item.product.price * item.quantity).toLocaleString('en-IN')}${newline}`;
+      const name = lang === 'en' ? item.product.nameEn : `${item.product.nameEn} (${item.product.nameTa})`;
+      text += `${index + 1}. ${name} [Qty: ${item.quantity}] = ₹${(item.product.price * item.quantity).toLocaleString('en-IN')}\n`;
     });
 
-    text += `${newline}*Financial Summary:*${newline}`;
-    text += `• Subtotal: ₹${subtotal.toLocaleString('en-IN')}${newline}`;
+    text += `\n*Financial Summary:*\n`;
+    text += `• Subtotal: ₹${subtotal.toLocaleString('en-IN')}\n`;
     if (appliedOffer) {
-      text += `• Coupon Applied: ${appliedOffer.code} (-${appliedOffer.discountPercentage}%)${newline}`;
-      text += `• Discount Savings: -₹${discountAmount.toLocaleString('en-IN')}${newline}`;
+      text += `• Promo Coupon (${appliedOffer.code}): -₹${discountAmount.toLocaleString('en-IN')}\n`;
     }
-    text += `*• GRAND TOTAL: ₹${finalTotal.toLocaleString('en-IN')}*${newline}${newline}`;
+    text += `*• GRAND TOTAL: ₹${finalTotal.toLocaleString('en-IN')}*\n\n`;
     text += `🎇 _Thank you for choosing Garudan Crackers to light up your skies! Please verify this order list._`;
 
-    return `https://wa.me/919092268462?text=${text}`;
+    return `https://wa.me/919092268462?text=${encodeURIComponent(text)}`;
   };
 
   const handlePlaceOrder = async (e: FormEvent) => {
     e.preventDefault();
     if (cartItems.length === 0) return;
 
-    if (!customerName || !mobile || !address) {
-      alert(lang === 'en' ? 'Please complete all required fields.' : 'தேவையான அனைத்து விவரங்களையும் நிரப்பவும்.');
+    if (!customerName.trim() || !mobile.trim() || !address.trim()) {
+      alert(lang === 'en' ? 'Please complete all required fields (Name, Mobile Number, Address).' : 'தேவையான அனைத்து விவரங்களையும் நிரப்பவும் (பெயர், தொலைபேசி, முகவரி).');
       return;
     }
 
     setIsSubmitting(true);
     const waUrl = generateWhatsAppUrl();
 
-    console.log('🛒 [handlePlaceOrder] Submitting WhatsApp order:', {
-      customerName,
-      mobile,
-      address,
-      notes,
-      couponApplied: appliedOffer?.code
-    });
+    // Directly open business WhatsApp immediately on click to prevent popup blockers
+    try {
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.warn('window.open failed, redirecting location:', err);
+      window.location.href = waUrl;
+    }
 
     try {
       const result = await onSubmitOrder({
@@ -141,19 +151,12 @@ export default function CartDrawer({
         couponApplied: appliedOffer?.code
       });
 
-      console.log('📦 [handlePlaceOrder] onSubmitOrder result:', result);
-
-      if (result.success) {
-        setCreatedOrderId(result.orderId || '');
-        setOrderSuccess(true);
-      } else {
-        console.warn('⚠️ [handlePlaceOrder] Order submission returned success: false');
-        setOrderSuccess(true);
+      if (result.success && result.orderId) {
+        setCreatedOrderId(result.orderId);
       }
+      setOrderSuccess(true);
     } catch (err) {
-      console.error('❌ [handlePlaceOrder] Error processing order submission:', err);
-      // Fallback: launch WhatsApp directly if needed
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
+      console.error('Error processing order submission:', err);
       setOrderSuccess(true);
     } finally {
       setIsSubmitting(false);
@@ -161,19 +164,19 @@ export default function CartDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" id="cart-drawer-overlay">
+    <div className="fixed inset-0 z-50 overflow-hidden overscroll-none" id="cart-drawer-overlay">
       
       {/* Background overlay */}
       <div 
-        className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm transition-opacity touch-none"
         onClick={onClose}
       />
 
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-[#050505] border-l border-white/10 flex flex-col justify-between shadow-2xl relative">
+      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 h-full">
+        <div className="w-screen max-w-md bg-[#050505] border-l border-white/10 flex flex-col justify-between shadow-2xl relative h-full max-h-screen overscroll-contain">
           
           {/* Header */}
-          <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+          <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between flex-shrink-0">
             <h2 className="text-xl font-black uppercase tracking-tighter text-white font-display">
               {translations.cart}
             </h2>
@@ -187,7 +190,10 @@ export default function CartDrawer({
           </div>
 
           {/* Cart Contents */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          <div 
+            className="flex-1 overflow-y-auto overscroll-contain touch-pan-y px-6 py-4 space-y-6"
+            onScroll={(e) => e.stopPropagation()}
+          >
             {orderSuccess ? (
               // Order placement Success screen
               <div className="text-center py-10 space-y-6 flex flex-col items-center justify-center h-full">
@@ -336,7 +342,25 @@ export default function CartDrawer({
                   )}
                 </div>
 
-                {/* Order Form */}
+                {/* Pricing Breakdown Card (Subtotal & Total - Right after Products & Coupon) */}
+                <div className="p-4 bg-[#111111]/90 rounded-none space-y-2 border border-amber-500/30">
+                  <div className="flex justify-between text-xs uppercase tracking-wider text-neutral-300">
+                    <span>Subtotal</span>
+                    <span className="font-mono font-bold text-white">₹{subtotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  {appliedOffer && (
+                    <div className="flex justify-between text-xs uppercase tracking-wider text-emerald-400 font-bold">
+                      <span>Festive Savings ({appliedOffer.discountPercentage}%)</span>
+                      <span className="font-mono">-₹{discountAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-black uppercase tracking-wider text-white pt-2.5 border-t border-white/10">
+                    <span>{translations.total}</span>
+                    <span className="font-mono text-[#D4AF37] text-base font-extrabold">₹{finalTotal.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+
+                {/* Order Form (Customer Details) */}
                 <form onSubmit={handlePlaceOrder} className="space-y-4 pt-4 border-t border-white/5">
                   <span className="block text-[10px] uppercase font-mono tracking-[0.25em] text-neutral-400 font-bold">
                     {translations.quickOrder}
@@ -388,34 +412,21 @@ export default function CartDrawer({
                     </div>
                   </div>
 
-                  {/* Pricing Breakdown Card */}
-                  <div className="p-4 bg-[#111111]/90 rounded-none space-y-2 border border-white/5">
-                    <div className="flex justify-between text-[10px] uppercase tracking-wider text-neutral-400">
-                      <span>Subtotal</span>
-                      <span className="font-mono">₹{subtotal.toLocaleString('en-IN')}</span>
+                  {/* Submission button: Confirm Order */}
+                  <div className="space-y-2.5 pt-3 border-t border-white/10">
+                    <div className="flex items-center justify-between px-1 text-xs font-mono">
+                      <span className="text-neutral-400 uppercase tracking-wider">{translations.total}:</span>
+                      <span className="text-[#D4AF37] font-extrabold text-sm">₹{finalTotal.toLocaleString('en-IN')}</span>
                     </div>
-                    {appliedOffer && (
-                      <div className="flex justify-between text-[10px] uppercase tracking-wider text-emerald-400 font-bold">
-                        <span>Festive Savings ({appliedOffer.discountPercentage}%)</span>
-                        <span className="font-mono">-₹{discountAmount.toLocaleString('en-IN')}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-xs font-black uppercase tracking-wider text-white pt-2.5 border-t border-white/5">
-                      <span>{translations.total}</span>
-                      <span className="font-mono text-[#D4AF37] text-sm">₹{finalTotal.toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
 
-                  {/* Submission buttons */}
-                  <div className="grid grid-cols-1 gap-2 pt-2">
                     <button
                       type="submit"
                       disabled={isSubmitting || cartItems.length === 0}
-                      id="place-order-whatsapp-submit"
-                      className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-xs rounded-none transition-all flex items-center justify-center gap-2 disabled:opacity-40 hover:scale-[1.01] active:scale-[0.99] cursor-pointer border border-emerald-400/40 shadow-lg shadow-emerald-950/60"
+                      id="confirm-order-submit"
+                      className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black uppercase tracking-wider text-xs rounded-none transition-all flex items-center justify-center gap-2 disabled:opacity-40 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-lg shadow-amber-950/50"
                     >
-                      <MessageSquare className="w-4 h-4 text-white" />
-                      <span>{isSubmitting ? translations.loading : translations.placeOrder}</span>
+                      <CheckCircle className="w-4 h-4 text-black" />
+                      <span>{isSubmitting ? translations.loading : (lang === 'en' ? 'Confirm Order' : 'ஆர்டரை உறுதி செய்க')}</span>
                     </button>
                   </div>
 

@@ -33,22 +33,6 @@ export default function ContactSection({ lang, translations }: ContactSectionPro
 
   return (
     <section id="contact-coordinates-section" className="py-20 bg-[#050505] font-sans border-t border-white/10 scroll-mt-24 relative">
-      
-      {/* Floating WhatsApp Action Button (Floating at bottom-right corner) */}
-      <a
-        href="https://wa.me/919092268462?text=Hi%20Garudan%20Crackers,%20I'd%20like%20to%20know%20more%20about%20your%20diwali%20cracker%20prices!"
-        target="_blank"
-        rel="noreferrer"
-        id="floating-whatsapp-trigger"
-        className="fixed bottom-6 right-6 z-45 flex items-center justify-center p-4 bg-emerald-500 text-neutral-950 rounded-none shadow-xl cursor-pointer hover:bg-emerald-400 hover:scale-110 active:scale-95 transition-all group animate-bounce"
-        title="Quick WhatsApp Help"
-      >
-        <MessageSquare className="w-6 h-6 text-neutral-950" />
-        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-black font-sans uppercase text-neutral-950 ml-0 group-hover:ml-2">
-          {lang === 'en' ? 'Quick Ordering' : 'விரைவு ஆர்டர்'}
-        </span>
-      </a>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Headings */}

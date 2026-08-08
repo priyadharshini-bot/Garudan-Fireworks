@@ -15,6 +15,8 @@ import AdminPanel from './components/AdminPanel';
 import AdminLoginGate from './components/AdminLoginGate';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
+import FloatingWhatsApp from './components/FloatingWhatsApp';
+import FloatingCartBar from './components/FloatingCartBar';
 import CrackerVisual from './components/CrackerVisual';
 import { 
   Sparkles, ShieldCheck, Flame, MessageSquare, Award, 
@@ -36,6 +38,7 @@ export default function App() {
   const [offers, setOffers] = useState<Offer[]>(FESTIVAL_OFFERS);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastAddedItem, setLastAddedItem] = useState<{ name: string; quantity: number } | null>(null);
 
   const t = TRANSLATIONS[lang];
 
@@ -106,7 +109,10 @@ export default function App() {
     }
 
     syncCart(updated);
-    setIsCartOpen(true); // Open drawer immediately on selection
+    setLastAddedItem({
+      name: lang === 'en' ? product.nameEn : product.nameTa,
+      quantity
+    });
   };
 
   // Update Cart Item quantity
@@ -195,13 +201,6 @@ export default function App() {
     waText += `🎇 Thank you for choosing Garudan Crackers!`;
 
     const waUrl = `https://wa.me/919092268462?text=${encodeURIComponent(waText)}`;
-
-    // Trigger automated window.open to WhatsApp
-    try {
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
-    } catch (e) {
-      console.warn('⚠️ Automated WhatsApp window.open failed:', e);
-    }
 
     try {
       const res = await fetch('/api/orders', {
@@ -311,6 +310,30 @@ export default function App() {
       if (res.ok) {
         const editedOrder = await res.json();
         setOrders(orders.map(o => o.id === editedOrder.id ? editedOrder : o));
+      }
+    } catch (ex) {
+      console.error(ex);
+    }
+  };
+
+  // Delete single order
+  const handleAdminDeleteOrder = async (oId: string) => {
+    try {
+      const res = await fetch(`/api/orders/${oId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setOrders(orders.filter(o => o.id !== oId));
+      }
+    } catch (ex) {
+      console.error(ex);
+    }
+  };
+
+  // Clear all sales history orders
+  const handleAdminClearAllOrders = async () => {
+    try {
+      const res = await fetch('/api/orders', { method: 'DELETE' });
+      if (res.ok) {
+        setOrders([]);
       }
     } catch (ex) {
       console.error(ex);
@@ -590,6 +613,8 @@ export default function App() {
                 onEditProduct={handleAdminEditProduct}
                 onDeleteProduct={handleAdminDeleteProduct}
                 onUpdateOrderStatus={handleAdminUpdateStatus}
+                onDeleteOrder={handleAdminDeleteOrder}
+                onClearAllOrders={handleAdminClearAllOrders}
                 onAddOffer={handleAdminAddOffer}
                 onToggleOffer={handleAdminToggleOffer}
                 onDeleteOffer={handleAdminDeleteOffer}
@@ -626,6 +651,17 @@ export default function App() {
           translations={t}
           offers={offers}
           onSubmitOrder={handleSubmitOrder}
+        />
+
+        {/* Global Floating WhatsApp Quick Action Button */}
+        <FloatingWhatsApp lang={lang} />
+
+        {/* Global Floating View Cart Bar & Toast Notification */}
+        <FloatingCartBar 
+          cart={cart}
+          lang={lang}
+          onOpenCart={() => setIsCartOpen(false) || setIsCartOpen(true)}
+          lastAddedItem={lastAddedItem}
         />
 
       </div>
