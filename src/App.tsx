@@ -501,7 +501,7 @@ export default function App() {
                         >
                           <div className="relative aspect-square w-full rounded-none bg-[#1a1a1a] p-4 border border-white/5 overflow-hidden flex items-center justify-center">
                             <div className="absolute inset-0 bg-gradient-to-t from-orange-600 to-yellow-300 opacity-10 blur-2xl pointer-events-none" />
-                            <CrackerVisual type={p.image} className="w-2/3 h-2/3 object-contain relative z-10" />
+                            <CrackerVisual type={p.image} className="w-full h-full p-2 object-contain relative z-10" />
                             
                             {discountPct > 0 && (
                               <span className="absolute top-3 left-3 px-2 py-0.5 bg-[#D4AF37] text-black font-mono text-[9px] font-black uppercase tracking-wider">

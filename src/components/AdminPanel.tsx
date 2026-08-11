@@ -202,22 +202,29 @@ export default function AdminPanel({
       'fancy_cake12', 'fancy_cake30', 'giftbox_silver', 'giftbox_gold',
       'kids_snake', 'kids_wheel', 'combo_double'
     ];
-    if (p.image && (p.image.startsWith('http://') || p.image.startsWith('https://') || p.image.startsWith('/') || p.image.startsWith('data:') || !presets.includes(p.image))) {
+    const imgStr = (p.image || '').trim();
+    const isCustom = imgStr.length > 0 && (
+      imgStr.startsWith('http://') || 
+      imgStr.startsWith('https://') || 
+      imgStr.startsWith('/') || 
+      imgStr.startsWith('data:') || 
+      imgStr.startsWith('blob:') ||
+      !presets.includes(imgStr)
+    );
+
+    if (isCustom) {
       setImageType('sparkler');
-      setCustomImageUrl(p.image);
+      setCustomImageUrl(imgStr);
       setUseCustomImage(true);
-      if (p.image.startsWith('data:')) {
-        setImageSourceMode('file');
-        setUploadedFileName('Uploaded Product Image');
-      } else if (p.image.startsWith('http://') || p.image.startsWith('https://')) {
+      if (imgStr.startsWith('http://') || imgStr.startsWith('https://')) {
         setImageSourceMode('url');
-        setUploadedFileName('');
+        setUploadedFileName('Linked Web URL');
       } else {
         setImageSourceMode('file');
-        setUploadedFileName('Product Image File');
+        setUploadedFileName('Attached Product Photo');
       }
     } else {
-      setImageType(p.image || 'sparkler');
+      setImageType(imgStr || 'sparkler');
       setCustomImageUrl('');
       setUseCustomImage(false);
       setImageSourceMode('preset');
@@ -579,7 +586,7 @@ export default function AdminPanel({
                   {/* Mode 1: Import from Device Files */}
                   {imageSourceMode === 'file' && useCustomImage && (
                     <div className="space-y-3">
-                      {customImageUrl && customImageUrl.startsWith('data:') ? (
+                      {customImageUrl && customImageUrl.trim().length > 0 ? (
                         <div className="flex flex-col sm:flex-row items-center gap-4 p-3 bg-neutral-900/90 rounded-xl border border-amber-500/30">
                           <div className="w-24 h-24 rounded-lg bg-black border border-neutral-700 overflow-hidden flex items-center justify-center p-1 shrink-0 relative group">
                             <img 
@@ -592,13 +599,13 @@ export default function AdminPanel({
                           <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
                             <div className="flex items-center gap-2 justify-center sm:justify-start text-emerald-400 text-xs font-bold font-mono">
                               <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                              <span>Image File Loaded Successfully</span>
+                              <span>Product Photo Attached</span>
                             </div>
                             <p className="text-xs text-white font-semibold truncate">
-                              {uploadedFileName || 'Custom Local File'}
+                              {uploadedFileName || 'Custom Image File'}
                             </p>
                             <p className="text-[11px] text-neutral-400 font-mono">
-                              Stored directly in product catalog
+                              Will be displayed across product catalog
                             </p>
                             <div className="pt-2 flex items-center justify-center sm:justify-start gap-2">
                               <label 
@@ -606,14 +613,18 @@ export default function AdminPanel({
                                 className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 hover:text-white rounded-lg text-xs font-bold cursor-pointer transition-all border border-neutral-700 flex items-center gap-1"
                               >
                                 <Upload className="w-3 h-3" />
-                                <span>Choose Different File</span>
+                                <span>Change Photo</span>
                               </label>
                               <input
                                 type="file"
                                 id="product-file-upload-replace"
                                 accept="image/*"
                                 className="hidden"
-                                onChange={(e) => handleImageFileSelect(e.target.files?.[0])}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  handleImageFileSelect(file);
+                                  e.target.value = '';
+                                }}
                               />
                               <button
                                 type="button"
@@ -621,7 +632,7 @@ export default function AdminPanel({
                                   setCustomImageUrl('');
                                   setUploadedFileName('');
                                 }}
-                                className="px-2.5 py-1.5 text-red-400 hover:text-red-300 text-xs font-bold hover:bg-red-950/40 rounded-lg transition-all"
+                                className="px-2.5 py-1.5 text-red-400 hover:text-red-300 text-xs font-bold hover:bg-red-950/40 rounded-lg transition-all cursor-pointer"
                               >
                                 Remove
                               </button>
@@ -645,7 +656,11 @@ export default function AdminPanel({
                             id="product-file-upload-main"
                             accept="image/*"
                             className="hidden"
-                            onChange={(e) => handleImageFileSelect(e.target.files?.[0])}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              handleImageFileSelect(file);
+                              e.target.value = '';
+                            }}
                           />
 
                           <div className="flex flex-col items-center gap-2">
@@ -660,14 +675,10 @@ export default function AdminPanel({
                                 Import images directly from your computer, phone, or local files (.PNG, .JPG, .WEBP)
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              disabled={isProcessingImage}
-                              className="mt-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer"
-                            >
+                            <div className="mt-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer">
                               <FileImage className="w-4 h-4" />
                               <span>Browse Files from Device</span>
-                            </button>
+                            </div>
                           </div>
                         </div>
                       )}

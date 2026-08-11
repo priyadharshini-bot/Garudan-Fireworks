@@ -530,7 +530,7 @@ export default function ProductSection({
                       {/* Vector Image Illustration Area */}
                       <div className="w-full aspect-square rounded-xl overflow-hidden bg-[#1f1638] border border-amber-500/10 relative flex items-center justify-center group-hover:scale-[1.02] transition-transform">
                         <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-purple-500/10 pointer-events-none" />
-                        <CrackerVisual type={p.image} className="w-3/4 h-3/4 object-contain relative z-10" />
+                        <CrackerVisual type={p.image} className="w-full h-full p-2 object-contain relative z-10" />
                         
                         {/* Backdrop stock indicator label */}
                         <div className="absolute bottom-3 right-3 z-10">

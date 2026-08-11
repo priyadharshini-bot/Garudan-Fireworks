@@ -3,26 +3,50 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useState } from 'react';
+
 interface CrackerVisualProps {
   type: string;
   className?: string;
 }
 
+const PRESET_KEYS = [
+  'sparkler', 'sparkler_multi', 'flowerpot_gold', 'flowerpot_color',
+  'rocket_whistle', 'rocket_pack', 'bomb_green', 'bomb_red',
+  'fancy_cake12', 'fancy_cake30', 'kids_snake', 'kids_wheel',
+  'giftbox_silver', 'giftbox_gold', 'combo_double'
+];
+
 export default function CrackerVisual({ type, className = "w-full h-full" }: CrackerVisualProps) {
-  // If type is a URL, data URI, or path, render an image element
-  if (type && (type.startsWith('http://') || type.startsWith('https://') || type.startsWith('/') || type.startsWith('data:'))) {
+  const [hasError, setHasError] = useState(false);
+
+  const cleanType = (type || '').trim();
+
+  // If cleanType is a data URI, URL, path, blob, or custom image string (not a preset key)
+  const isImageSource = 
+    cleanType.startsWith('data:') ||
+    cleanType.startsWith('http://') ||
+    cleanType.startsWith('https://') ||
+    cleanType.startsWith('/') ||
+    cleanType.startsWith('blob:') ||
+    cleanType.startsWith('assets/') ||
+    cleanType.startsWith('images/') ||
+    (!PRESET_KEYS.includes(cleanType) && cleanType.length > 20);
+
+  if (isImageSource && !hasError) {
     return (
       <img 
-        src={type} 
+        src={cleanType} 
         alt="Product Visual" 
-        className={`${className} object-contain rounded-none`} 
+        className={`${className} object-contain`} 
+        onError={() => setHasError(true)}
         referrerPolicy="no-referrer"
       />
     );
   }
 
   // Return glowing vector illustrations based on the product type key
-  switch (type) {
+  switch (cleanType) {
     case 'sparkler':
     case 'sparkler_multi':
       return (
