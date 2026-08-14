@@ -327,7 +327,8 @@ export default function App() {
   // Edit Product specifications & image
   const handleAdminEditProduct = async (pId: string, updatedParams: Partial<Product>): Promise<Product> => {
     try {
-      const res = await fetch(`/api/products/${pId}`, {
+      const cleanId = encodeURIComponent((pId || '').trim());
+      const res = await fetch(`/api/products/${cleanId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedParams)
@@ -356,8 +357,9 @@ export default function App() {
   // Delete Product
   const handleAdminDeleteProduct = async (pId: string) => {
     try {
-      console.log(`🗑️ [handleAdminDeleteProduct] Deleting product ${pId}...`);
-      const res = await fetch(`/api/products/${pId}`, { method: 'DELETE' });
+      const cleanId = encodeURIComponent((pId || '').trim());
+      console.log(`🗑️ [handleAdminDeleteProduct] Deleting product ${cleanId}...`);
+      const res = await fetch(`/api/products/${cleanId}`, { method: 'DELETE' });
       if (res.ok) {
         console.log(`✅ [handleAdminDeleteProduct] Product ${pId} deleted successfully from server.`);
         setProducts(prev => prev.filter(p => p.id !== pId));

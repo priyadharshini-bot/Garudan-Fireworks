@@ -511,9 +511,31 @@ async function startServer() {
   // Edit product specs
   app.put('/api/products/:id', (req, res) => {
     const db = loadDB();
-    const pIdx = db.products.findIndex((p) => p.id === req.params.id);
+    const rawParamId = req.params.id;
+    const decodedId = decodeURIComponent(rawParamId).trim();
+
+    let pIdx = db.products.findIndex((p) => p.id === rawParamId || p.id === decodedId);
     if (pIdx === -1) {
-      return res.status(404).json({ error: 'Product not found' });
+      // Case-insensitive / trimmed match
+      pIdx = db.products.findIndex(
+        (p) => p.id.trim().toLowerCase() === decodedId.toLowerCase()
+      );
+    }
+
+    if (pIdx === -1) {
+      // If product exists in SEED_PRODUCTS, initialize it into db.products
+      const seedMatch = SEED_PRODUCTS.find(
+        (p) => p.id.trim().toLowerCase() === decodedId.toLowerCase() || p.id === rawParamId
+      );
+      if (seedMatch) {
+        db.products.push({ ...seedMatch });
+        pIdx = db.products.length - 1;
+      }
+    }
+
+    if (pIdx === -1) {
+      console.warn(`⚠️ [PUT /api/products/:id] Product not found for ID: "${rawParamId}" (decoded: "${decodedId}")`);
+      return res.status(404).json({ error: `Product with ID '${decodedId}' not found in database.` });
     }
 
     const current = db.products[pIdx];
@@ -550,7 +572,12 @@ async function startServer() {
   // Delete product
   app.delete('/api/products/:id', (req, res) => {
     const db = loadDB();
-    const filtered = db.products.filter((p) => p.id !== req.params.id);
+    const rawParamId = req.params.id;
+    const decodedId = decodeURIComponent(rawParamId).trim();
+
+    const filtered = db.products.filter(
+      (p) => p.id !== rawParamId && p.id !== decodedId && p.id.trim().toLowerCase() !== decodedId.toLowerCase()
+    );
     db.products = filtered;
     saveDB(db);
     res.json({ success: true, message: 'Cracker removed successfully.' });

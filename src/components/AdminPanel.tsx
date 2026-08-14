@@ -130,10 +130,29 @@ export default function AdminPanel({
     setIsProcessingImage(true);
     try {
       const res = await compressAndReadImageFile(file);
-      setCustomImageUrl(res.dataUrl);
       setUploadedFileName(res.fileName);
       setUseCustomImage(true);
       setImageSourceMode('file');
+
+      // Attempt to save to backend /api/upload storage
+      let resolvedUrl = res.dataUrl;
+      try {
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl: res.dataUrl, fileName: res.fileName })
+        });
+        if (uploadRes.ok) {
+          const uploadJson = await uploadRes.json();
+          if (uploadJson && uploadJson.url) {
+            resolvedUrl = uploadJson.url;
+          }
+        }
+      } catch (uploadErr) {
+        console.warn('Direct upload endpoint fallback to dataUrl:', uploadErr);
+      }
+
+      setCustomImageUrl(resolvedUrl);
     } catch (err) {
       console.error('Failed reading image file:', err);
       alert('Could not process selected image file. Please try another picture.');
