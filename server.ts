@@ -12,18 +12,31 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Establish relative paths and DB directories
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Establish relative paths and DB directories with resilient serverless /tmp fallbacks
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DATA_DIR = isServerless ? path.join('/tmp', 'garudan_data') : path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+const UPLOADS_DIR = isServerless ? path.join('/tmp', 'garudan_uploads') : path.join(process.cwd(), 'uploads');
 
-// Ensure database and uploads folders exist
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Ensure database and uploads folders exist safely
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('⚠️ DATA_DIR init notice:', e);
 }
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+try {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('⚠️ UPLOADS_DIR init notice:', e);
 }
+
+// In-memory image buffer cache for ultra-resilient serving across serverless invocations
+const memoryImages = new Map<string, { buffer: Buffer; mime: string }>();
 
 // Helper to save base64 data URI to file on disk and return cache-busted URL
 function saveImageIfDataUri(imageStr: string | undefined, prefix = 'prod'): string {
@@ -35,14 +48,27 @@ function saveImageIfDataUri(imageStr: string | undefined, prefix = 'prod'): stri
   try {
     const rawExt = match[1].toLowerCase();
     const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : rawExt;
+    const mime = `image/${rawExt === 'jpg' ? 'jpeg' : rawExt}`;
     const buffer = Buffer.from(match[2], 'base64');
     const timestamp = Date.now();
     const randomHex = Math.random().toString(36).substring(2, 8);
     const filename = `${prefix}_${timestamp}_${randomHex}.${ext}`;
-    const filePath = path.join(UPLOADS_DIR, filename);
-    
-    fs.writeFileSync(filePath, buffer);
-    console.log(`📸 [IMAGE SAVED]: Created ${filename} (${buffer.length} bytes) in /uploads`);
+
+    // Always store in memory cache
+    memoryImages.set(filename, { buffer, mime });
+
+    // Also attempt disk write
+    try {
+      if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+      }
+      const filePath = path.join(UPLOADS_DIR, filename);
+      fs.writeFileSync(filePath, buffer);
+      console.log(`📸 [IMAGE SAVED]: Created ${filename} (${buffer.length} bytes) in /uploads`);
+    } catch (diskErr) {
+      console.warn(`⚠️ Disk write bypassed in serverless environment, retained in memory cache:`, diskErr);
+    }
+
     return `/uploads/${filename}?v=${timestamp}`;
   } catch (err) {
     console.error('⚠️ [IMAGE SAVE ERROR]:', err);
@@ -254,29 +280,54 @@ const SEED_OFFERS: APIOffer[] = [
   }
 ];
 
-// Read DB from local disk
+// In-memory cache for schema state
+let memoryDB: Schema | null = null;
+
+// Read DB from local disk or memory cache
 function loadDB(): Schema {
-  if (!fs.existsSync(DB_FILE)) {
-    const defaultData: Schema = {
-      products: SEED_PRODUCTS,
-      orders: [],
-      offers: SEED_OFFERS
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2), 'utf-8');
-    return defaultData;
+  if (memoryDB) {
+    return memoryDB;
   }
+
   try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(DB_FILE)) {
+      const defaultData: Schema = {
+        products: SEED_PRODUCTS,
+        orders: [],
+        offers: SEED_OFFERS
+      };
+      try {
+        fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2), 'utf-8');
+      } catch (writeErr) {
+        console.warn('⚠️ Disk write seed notice (retained in memory):', writeErr);
+      }
+      memoryDB = defaultData;
+      return defaultData;
+    }
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(raw);
+    memoryDB = JSON.parse(raw);
+    return memoryDB!;
   } catch (err) {
-    console.error('Error parsing db file, resetting', err);
-    return { products: SEED_PRODUCTS, orders: [], offers: SEED_OFFERS };
+    console.warn('Notice parsing db file, falling back to memory seed:', err);
+    memoryDB = { products: [...SEED_PRODUCTS], orders: [], offers: [...SEED_OFFERS] };
+    return memoryDB;
   }
 }
 
-// Write DB to disk
+// Write DB to disk and synchronize memory cache
 function saveDB(data: Schema) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  memoryDB = data;
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (writeErr) {
+    console.warn('⚠️ Disk save notice (retained in memory cache):', writeErr);
+  }
 }
 
 // LAZY SMTP transporter setup to prevent startup crashes
@@ -427,10 +478,9 @@ async function sendOrderMailNotification(order: APIOrder): Promise<{ emailSent: 
   }
 }
 
-// Boot Express Main application
-async function startServer() {
+// Create and configure Express Application instance
+export function createApp() {
   const app = express();
-  const PORT = 3000;
 
   // JSON request parser with higher payload limit for image file data
   app.use(express.json({ limit: '50mb' }));
@@ -438,6 +488,31 @@ async function startServer() {
 
   // Serve static uploaded product images directly with cache headers
   app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '1h' }));
+
+  // Fallback direct image route in case static middleware didn't catch or in serverless memory cache
+  app.get('/uploads/:filename', (req, res) => {
+    const rawName = (req.params.filename || '').split('?')[0];
+    const decodedName = decodeURIComponent(rawName);
+
+    if (memoryImages.has(decodedName)) {
+      const img = memoryImages.get(decodedName)!;
+      res.setHeader('Content-Type', img.mime);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(img.buffer);
+    }
+
+    const diskPath = path.join(UPLOADS_DIR, decodedName);
+    if (fs.existsSync(diskPath)) {
+      return res.sendFile(diskPath);
+    }
+
+    const fallbackPath = path.join(process.cwd(), 'uploads', decodedName);
+    if (fs.existsSync(fallbackPath)) {
+      return res.sendFile(fallbackPath);
+    }
+
+    res.status(404).send('Image not found');
+  });
 
   // Direct Image Upload Endpoint
   app.post('/api/upload', (req, res) => {
@@ -794,7 +869,13 @@ Sitemap: https://garudancrackers.com/sitemap.xml`);
 </urlset>`);
   });
 
-  // ----------------------- FRAMEWORK BOOTSTRAPER -----------------------
+  return app;
+}
+
+// Boot Express Main application for container / standalone environment
+export async function startServer() {
+  const app = createApp();
+  const PORT = 3000;
 
   // Development VS Production Asset Handlers
   if (process.env.NODE_ENV !== 'production') {
@@ -815,6 +896,10 @@ Sitemap: https://garudancrackers.com/sitemap.xml`);
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 GARUDAN SERVER RUNNING SECURELY ON HTTP://localhost:${PORT}`);
   });
+
+  return app;
 }
 
-startServer();
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  startServer();
+}

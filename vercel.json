@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/uploads",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/((?!api/|uploads/|robots\\.txt|sitemap\\.xml).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
