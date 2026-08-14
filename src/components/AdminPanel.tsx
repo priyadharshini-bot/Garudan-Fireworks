@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent, ChangeEvent, DragEvent } from 'react';
+import { useState, useEffect, FormEvent, ChangeEvent, DragEvent } from 'react';
 import { Product, Category, Order, Offer, Language, TranslationSchema } from '../types';
 import CrackerVisual from './CrackerVisual';
 import { 
@@ -77,6 +77,15 @@ export default function AdminPanel({
   const [imageSourceMode, setImageSourceMode] = useState<'file' | 'preset' | 'url'>('file');
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Auto-dismiss success message
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   // Helper to read local image file and compress into base64 data URL
   const compressAndReadImageFile = (file: File): Promise<{ dataUrl: string; fileName: string }> => {
@@ -196,10 +205,12 @@ export default function AdminPanel({
     try {
       if (editingProdId) {
         await onEditProduct(editingProdId, prodPayload);
+        setSuccessMessage(`Product "${nameEn || 'Cracker'}" specifications updated successfully!`);
         setEditingProdId(null);
         setShowAddForm(false);
       } else {
         await onAddProduct(prodPayload);
+        setSuccessMessage(`Product "${nameEn || 'Cracker'}" registered successfully to catalog!`);
         setShowAddForm(false);
       }
       resetForm();
@@ -494,6 +505,23 @@ export default function AdminPanel({
         {activeTab === 'catalog' && (
           <div className="space-y-6">
             
+            {/* Success Banner */}
+            {successMessage && (
+              <div className="p-3.5 bg-emerald-950/70 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-lg animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{successMessage}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSuccessMessage(null)}
+                  className="text-emerald-400 hover:text-white text-xs px-2 py-0.5 rounded cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {/* Header with trigger */}
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-bold font-sans text-neutral-200">

@@ -508,10 +508,10 @@ async function startServer() {
     res.status(201).json(newProduct);
   });
 
-  // Edit product specs
-  app.put('/api/products/:id', (req, res) => {
+  // Edit product specs (supports PUT, PATCH, POST with flexible matching and upserting)
+  const handleUpdateProduct = (req: any, res: any) => {
     const db = loadDB();
-    const rawParamId = req.params.id;
+    const rawParamId = req.params.id || req.body.id || '';
     const decodedId = decodeURIComponent(rawParamId).trim();
 
     let pIdx = db.products.findIndex((p) => p.id === rawParamId || p.id === decodedId);
@@ -533,15 +533,13 @@ async function startServer() {
       }
     }
 
-    if (pIdx === -1) {
-      console.warn(`⚠️ [PUT /api/products/:id] Product not found for ID: "${rawParamId}" (decoded: "${decodedId}")`);
-      return res.status(404).json({ error: `Product with ID '${decodedId}' not found in database.` });
+    // Process image update or preserve existing
+    let updatedImage: string = 'sparkler';
+    if (pIdx !== -1) {
+      updatedImage = db.products[pIdx].image;
     }
 
-    const current = db.products[pIdx];
-    let updatedImage = current.image;
-
-    if (req.body.image !== undefined && req.body.image !== null) {
+    if (req.body.image !== undefined && req.body.image !== null && req.body.image !== '') {
       // If a new data URI was sent, save it to disk and get the updated path
       if (typeof req.body.image === 'string' && req.body.image.startsWith('data:image/')) {
         updatedImage = saveImageIfDataUri(req.body.image, 'prod');
@@ -549,6 +547,29 @@ async function startServer() {
         updatedImage = req.body.image;
       }
     }
+
+    if (pIdx === -1) {
+      // Upsert product so updates never 404
+      const newProd: APIProduct = {
+        id: decodedId || ('prod-' + Date.now()),
+        nameEn: req.body.nameEn || 'Unspecified Cracker',
+        nameTa: req.body.nameTa || 'Unspecified Cracker',
+        category: req.body.category || 'Sparklers',
+        price: req.body.price !== undefined ? Number(req.body.price) : 100,
+        originalPrice: req.body.originalPrice !== undefined ? Number(req.body.originalPrice) : undefined,
+        descriptionEn: req.body.descriptionEn || '',
+        descriptionTa: req.body.descriptionTa || '',
+        image: updatedImage,
+        stock: req.body.stock !== undefined ? Number(req.body.stock) : 10,
+        isFeatured: req.body.isFeatured !== undefined ? !!req.body.isFeatured : false
+      };
+      db.products.push(newProd);
+      saveDB(db);
+      console.log(`✨ [PRODUCT UPSERTED]: ID ${newProd.id} - ${newProd.nameEn} (Image: ${newProd.image})`);
+      return res.status(200).json(newProd);
+    }
+
+    const current = db.products[pIdx];
 
     db.products[pIdx] = {
       ...current,
@@ -566,8 +587,13 @@ async function startServer() {
 
     saveDB(db);
     console.log(`🔄 [PRODUCT UPDATED]: ID ${db.products[pIdx].id} - ${db.products[pIdx].nameEn} (Image: ${db.products[pIdx].image})`);
-    res.json(db.products[pIdx]);
-  });
+    return res.status(200).json(db.products[pIdx]);
+  };
+
+  app.put('/api/products/:id', handleUpdateProduct);
+  app.patch('/api/products/:id', handleUpdateProduct);
+  app.post('/api/products/:id', handleUpdateProduct);
+  app.post('/api/products/update/:id', handleUpdateProduct);
 
   // Delete product
   app.delete('/api/products/:id', (req, res) => {

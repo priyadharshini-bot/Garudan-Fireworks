@@ -2,15 +2,15 @@
   "products": [
     {
       "id": "spk-1",
-      "nameEn": "Electric Sparklers (10cm) Premium",
-      "nameTa": "மின்சார கம்பி மத்தாப்பு",
+      "nameEn": "Electric Sparklers (10cm)",
+      "nameTa": "மின்சார கம்பி மத்தாப்பு சிறப்பு பதிப்பு",
       "category": "Sparklers",
       "price": 120,
-      "originalPrice": 180,
-      "descriptionEn": "Golden sparkling wires that burn with high-density bright golden sparks. Completely safe for kids under supervision.",
-      "descriptionTa": "அடர்ந்த தங்க நிற பொறிகளுடன் எரியும் பாதுகாப்பான மின்சார கம்பி மத்தாப்பு. குழந்தைகள் பயன்படுத்த உகந்தது.",
-      "image": "/uploads/upload_1786729533596_0nyw1p.png?v=1786729533596",
-      "stock": 138,
+      "originalPrice": 195,
+      "descriptionEn": "Deluxe golden sparklers with enhanced sparkle duration.",
+      "descriptionTa": "கூடுதல் நேரம் எரியும் சிறப்பு தங்க கம்பி மத்தாப்பு.",
+      "image": "sparkler",
+      "stock": 150,
       "isFeatured": true
     },
     {
