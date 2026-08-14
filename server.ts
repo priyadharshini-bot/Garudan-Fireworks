@@ -510,6 +510,7 @@ async function startServer() {
 
   // Edit product specs (supports PUT, PATCH, POST with flexible matching and upserting)
   const handleUpdateProduct = (req: any, res: any) => {
+    console.log(`📥 [SERVER] Product update request received: Method=${req.method}, URL=${req.originalUrl}, ParamsID=${req.params.id}, BodyID=${req.body?.id}`);
     const db = loadDB();
     const rawParamId = req.params.id || req.body.id || '';
     const decodedId = decodeURIComponent(rawParamId).trim();
@@ -565,7 +566,7 @@ async function startServer() {
       };
       db.products.push(newProd);
       saveDB(db);
-      console.log(`✨ [PRODUCT UPSERTED]: ID ${newProd.id} - ${newProd.nameEn} (Image: ${newProd.image})`);
+      console.log(`✨ [SERVER PRODUCT UPSERTED]: ID ${newProd.id} - ${newProd.nameEn} (Image: ${newProd.image})`);
       return res.status(200).json(newProd);
     }
 
@@ -586,7 +587,7 @@ async function startServer() {
     };
 
     saveDB(db);
-    console.log(`🔄 [PRODUCT UPDATED]: ID ${db.products[pIdx].id} - ${db.products[pIdx].nameEn} (Image: ${db.products[pIdx].image})`);
+    console.log(`🔄 [SERVER PRODUCT UPDATED]: ID ${db.products[pIdx].id} - ${db.products[pIdx].nameEn} (Image: ${db.products[pIdx].image})`);
     return res.status(200).json(db.products[pIdx]);
   };
 
@@ -597,6 +598,11 @@ async function startServer() {
   app.put('/api/products', handleUpdateProduct);
   app.patch('/api/products', handleUpdateProduct);
   app.post('/api/products/update', handleUpdateProduct);
+  app.put('/api/product/:id', handleUpdateProduct);
+  app.patch('/api/product/:id', handleUpdateProduct);
+  app.post('/api/product/:id', handleUpdateProduct);
+  app.put('/api/product', handleUpdateProduct);
+  app.patch('/api/product', handleUpdateProduct);
 
   // Delete product
   app.delete('/api/products/:id', (req, res) => {

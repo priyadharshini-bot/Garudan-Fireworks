@@ -2,15 +2,15 @@
   "products": [
     {
       "id": "spk-1",
-      "nameEn": "Electric Sparklers (10cm) High Quality",
-      "nameTa": "மின்சார கம்பி மத்தாப்பு உயர் தரம்",
+      "nameEn": "Electric Sparklers (10cm) Pro",
+      "nameTa": "மின்சார கம்பி மத்தாப்பு ப்ரோ",
       "category": "Sparklers",
       "price": 135,
-      "originalPrice": 190,
-      "descriptionEn": "Bright golden sparkle wires.",
-      "descriptionTa": "பிரகாசமான தங்க கம்பி மத்தாப்பு.",
-      "image": "/uploads/upload_1786731232688_gv32c4.png?v=1786731232688",
-      "stock": 160,
+      "originalPrice": 195,
+      "descriptionEn": "Super bright gold sparkle wires.",
+      "descriptionTa": "அதிபிரகாசமான தங்க கம்பி மத்தாப்பு.",
+      "image": "sparkler",
+      "stock": 140,
       "isFeatured": true
     },
     {
@@ -28,15 +28,15 @@
     },
     {
       "id": "flp-1",
-      "nameEn": "Golden Fountain Flower Pots",
-      "nameTa": "தங்க பூந்தொட்டி (பெரியது)",
+      "nameEn": "Golden Fountain Flower Pots Super Deluxe",
+      "nameTa": "தங்க பூந்தொட்டி சிறப்பு பதிப்பு",
       "category": "Flower Pots",
-      "price": 180,
-      "originalPrice": 280,
-      "descriptionEn": "Produces an incredibly tall fountain of golden sparks resembling a beautiful, gleaming tree.",
-      "descriptionTa": "மிக உயரமான தங்க நிற ஒளிரும் பூந்தொட்டி ஊற்று. பார்ப்பதற்கு மரம் போல் பிரம்மாண்டமாக இருக்கும்.",
-      "image": "flowerpot_gold",
-      "stock": 90,
+      "price": 199,
+      "originalPrice": 299,
+      "descriptionEn": "Tall golden fountain with giant sparks.",
+      "descriptionTa": "உயரமான தங்க நிற பூந்தொட்டி.",
+      "image": "/uploads/upload_1786731950829_1s2fh3.png?v=1786731950829",
+      "stock": 95,
       "isFeatured": true
     },
     {
@@ -54,15 +54,15 @@
     },
     {
       "id": "rkt-1",
-      "nameEn": "Sky-Screaming Whistle Rockets",
-      "nameTa": "விசில் சப்த வான ராக்கெட்",
+      "nameEn": "Sky-Screaming Whistle Rockets Deluxe Edition",
+      "nameTa": "விசில் சப்த வான ராக்கெட் டீலக்ஸ்",
       "category": "Rockets",
-      "price": 250,
-      "originalPrice": 380,
+      "price": 280,
+      "originalPrice": 420,
       "descriptionEn": "Sails high into the darkness with a sharp whistling sound, exploding into a beautiful silver crackling cloud.",
       "descriptionTa": "விசில் சப்தத்துடன் வானில் உயர்ந்து சென்று வெள்ளி நிற பூக்களாக வெடிக்கும் அதிநவீன ராக்கெட்.",
-      "image": "rocket_whistle",
-      "stock": 110,
+      "image": "/uploads/upload_1786732221492_bsth6m.png?v=1786732221492",
+      "stock": 85,
       "isFeatured": true
     },
     {

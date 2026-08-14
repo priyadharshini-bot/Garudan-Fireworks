@@ -177,11 +177,15 @@ export default function AdminPanel({
   const [descOfferEn, setDescOfferEn] = useState('');
   const [descOfferTa, setDescOfferTa] = useState('');
 
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+
   // Handle product save (Add or edit)
   const handleSaveProduct = async (e?: FormEvent | React.MouseEvent) => {
     if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
+    if (isSavingProduct) return;
+
     console.log(`📝 [handleSaveProduct] Submitting product form. editingProdId: "${editingProdId}"`);
 
     const trimmedNameEn = (nameEn || '').trim();
@@ -196,6 +200,7 @@ export default function AdminPanel({
       return;
     }
 
+    setIsSavingProduct(true);
     setIsProcessingImage(true);
 
     const chosenImage = useCustomImage 
@@ -236,6 +241,7 @@ export default function AdminPanel({
       alert('Error updating catalog: ' + (err?.message || 'Please try again.'));
     } finally {
       setIsProcessingImage(false);
+      setIsSavingProduct(false);
     }
   };
 
@@ -914,10 +920,12 @@ export default function AdminPanel({
                     <button
                       type="submit"
                       id="update-specs-btn"
-                      onClick={(e) => handleSaveProduct(e)}
-                      className="px-6 py-2 bg-amber-500 text-neutral-950 font-bold font-sans text-xs rounded-xl hover:bg-amber-400 cursor-pointer"
+                      disabled={isSavingProduct || isProcessingImage}
+                      className="px-6 py-2 bg-amber-500 text-neutral-950 font-bold font-sans text-xs rounded-xl hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all"
                     >
-                      {editingProdId ? 'Update Specifications' : 'Commit New Cracker'}
+                      {isSavingProduct 
+                        ? 'Saving Specifications...' 
+                        : (editingProdId ? 'Update Specifications' : 'Commit New Cracker')}
                     </button>
                   </div>
                 </div>

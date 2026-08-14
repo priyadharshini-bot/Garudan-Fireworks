@@ -326,33 +326,42 @@ export default function App() {
 
   // Edit Product specifications & image
   const handleAdminEditProduct = async (pId: string, updatedParams: Partial<Product>): Promise<Product> => {
+    console.log(`📡 [handleAdminEditProduct] START - Received product ID: "${pId}"`, updatedParams);
     try {
-      console.log(`📡 [handleAdminEditProduct] Initiating PUT update for product: "${pId}"`, updatedParams);
-      const cleanId = encodeURIComponent((pId || '').trim());
-      const res = await fetch(`/api/products/${cleanId}`, {
+      const targetId = (pId || updatedParams.id || '').trim();
+      const endpoint = targetId ? `/api/products/${encodeURIComponent(targetId)}` : '/api/products';
+      const requestPayload = { ...updatedParams, id: targetId || pId };
+
+      console.log(`🌐 [handleAdminEditProduct] Sending PUT request: Endpoint=${endpoint}, Method=PUT, Payload=`, requestPayload);
+
+      const res = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...updatedParams, id: pId })
+        body: JSON.stringify(requestPayload)
       });
-      console.log(`📡 [handleAdminEditProduct] Response status: ${res.status}`);
+
+      console.log(`📡 [handleAdminEditProduct] Server response status code: ${res.status}`);
+
       if (res.ok) {
         const editedProd: Product = await res.json();
-        console.log(`✅ [handleAdminEditProduct] Product successfully updated:`, editedProd);
+        console.log(`✅ [handleAdminEditProduct] SUCCESS - Product updated:`, editedProd);
         // Immediately update products state list with new specs and image
-        setProducts(prev => prev.map(p => (p.id === editedProd.id ? editedProd : p)));
+        setProducts(prev => prev.map(p => (p.id === editedProd.id || (targetId && p.id === targetId) ? editedProd : p)));
         // Also update any matching product in current cart
         setCart(prevCart => {
-          const nextCart = prevCart.map(it => (it.product.id === editedProd.id ? { ...it, product: editedProd } : it));
+          const nextCart = prevCart.map(it => (it.product.id === editedProd.id || (targetId && it.product.id === targetId) ? { ...it, product: editedProd } : it));
           localStorage.setItem('garudan_cart_ledger', JSON.stringify(nextCart));
           return nextCart;
         });
+        console.log(`🏁 [handleAdminEditProduct] END - State updated successfully`);
         return editedProd;
       } else {
         const errData = await res.json().catch(() => ({}));
+        console.error(`❌ [handleAdminEditProduct] Server responded with error status ${res.status}:`, errData);
         throw new Error(errData.error || `Server responded with status ${res.status}`);
       }
     } catch (ex) {
-      console.error('❌ [handleAdminEditProduct] Error updating product specifications:', ex);
+      console.error('❌ [handleAdminEditProduct] Exception during product update:', ex);
       throw ex;
     }
   };
