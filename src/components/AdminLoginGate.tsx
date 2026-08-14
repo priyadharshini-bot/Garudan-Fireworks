@@ -97,11 +97,13 @@ export default function AdminLoginGate({ lang, onLoginSuccess, onCancel }: Admin
           </div>
         </form>
 
-        <div className="border-t border-white/5 pt-4 text-center">
-          <span className="block text-[8px] font-mono text-neutral-600 uppercase tracking-widest leading-relaxed">
-            Authorized admin credentials required.<br />
-            Passcode: <span className="text-[#D4AF37] font-bold">GarudanAdmin2026</span>
-          </span>
+        <div className="border-t border-white/5 pt-4 text-center space-y-1">
+          <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest font-semibold">
+            {lang === 'en' ? 'Authorized administrators only.' : 'அங்கீகரிக்கப்பட்ட நிர்வாகிகளுக்கு மட்டுமே.'}
+          </p>
+          <p className="text-[9px] text-neutral-500 font-sans">
+            {lang === 'en' ? 'Enter your secure admin passcode to continue.' : 'தொடர உங்கள் நிர்வாக கடவுச்சொல்லை உள்ளிடவும்.'}
+          </p>
         </div>
       </div>
     </div>
