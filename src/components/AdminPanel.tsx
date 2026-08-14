@@ -178,44 +178,49 @@ export default function AdminPanel({
   const [descOfferTa, setDescOfferTa] = useState('');
 
   // Handle product save (Add or edit)
-  const handleSaveProduct = async (e: FormEvent) => {
-    e.preventDefault();
-    if (useCustomImage && !customImageUrl.trim()) {
-      alert('Please upload or select an image file for this product.');
-      return;
+  const handleSaveProduct = async (e?: FormEvent) => {
+    if (e) {
+      e.preventDefault();
     }
+    console.log(`📝 [handleSaveProduct] Submitting product form. editingProdId: "${editingProdId}"`);
 
     setIsProcessingImage(true);
 
-    const chosenImage = useCustomImage ? customImageUrl.trim() : imageType;
+    const chosenImage = useCustomImage 
+      ? (customImageUrl.trim() || imageType || 'sparkler') 
+      : (imageType || 'sparkler');
 
     const prodPayload = {
-      nameEn,
-      nameTa,
+      nameEn: nameEn.trim(),
+      nameTa: nameTa.trim(),
       category,
       price: Number(price),
       originalPrice: Number(origPrice) || undefined,
-      descriptionEn: descEn,
-      descriptionTa: descTa,
+      descriptionEn: descEn.trim(),
+      descriptionTa: descTa.trim(),
       stock: Number(stock),
       isFeatured,
       image: chosenImage
     };
 
+    console.log(`📦 [handleSaveProduct] Payload prepared:`, prodPayload);
+
     try {
       if (editingProdId) {
+        console.log(`🔄 [handleSaveProduct] Calling onEditProduct with ID: ${editingProdId}`);
         await onEditProduct(editingProdId, prodPayload);
         setSuccessMessage(`Product "${nameEn || 'Cracker'}" specifications updated successfully!`);
         setEditingProdId(null);
         setShowAddForm(false);
       } else {
+        console.log(`✨ [handleSaveProduct] Calling onAddProduct...`);
         await onAddProduct(prodPayload);
         setSuccessMessage(`Product "${nameEn || 'Cracker'}" registered successfully to catalog!`);
         setShowAddForm(false);
       }
       resetForm();
     } catch (err: any) {
-      console.error('Error saving product:', err);
+      console.error('❌ [handleSaveProduct] Error saving product:', err);
       alert('Error updating catalog: ' + (err?.message || 'Please try again.'));
     } finally {
       setIsProcessingImage(false);
@@ -896,6 +901,7 @@ export default function AdminPanel({
                     </button>
                     <button
                       type="submit"
+                      id="update-specs-btn"
                       className="px-6 py-2 bg-amber-500 text-neutral-950 font-bold font-sans text-xs rounded-xl hover:bg-amber-400 cursor-pointer"
                     >
                       {editingProdId ? 'Update Specifications' : 'Commit New Cracker'}

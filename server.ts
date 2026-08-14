@@ -594,6 +594,9 @@ async function startServer() {
   app.patch('/api/products/:id', handleUpdateProduct);
   app.post('/api/products/:id', handleUpdateProduct);
   app.post('/api/products/update/:id', handleUpdateProduct);
+  app.put('/api/products', handleUpdateProduct);
+  app.patch('/api/products', handleUpdateProduct);
+  app.post('/api/products/update', handleUpdateProduct);
 
   // Delete product
   app.delete('/api/products/:id', (req, res) => {

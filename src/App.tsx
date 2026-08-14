@@ -327,14 +327,17 @@ export default function App() {
   // Edit Product specifications & image
   const handleAdminEditProduct = async (pId: string, updatedParams: Partial<Product>): Promise<Product> => {
     try {
+      console.log(`📡 [handleAdminEditProduct] Initiating PUT update for product: "${pId}"`, updatedParams);
       const cleanId = encodeURIComponent((pId || '').trim());
       const res = await fetch(`/api/products/${cleanId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedParams)
+        body: JSON.stringify({ ...updatedParams, id: pId })
       });
+      console.log(`📡 [handleAdminEditProduct] Response status: ${res.status}`);
       if (res.ok) {
         const editedProd: Product = await res.json();
+        console.log(`✅ [handleAdminEditProduct] Product successfully updated:`, editedProd);
         // Immediately update products state list with new specs and image
         setProducts(prev => prev.map(p => (p.id === editedProd.id ? editedProd : p)));
         // Also update any matching product in current cart
@@ -349,7 +352,7 @@ export default function App() {
         throw new Error(errData.error || `Server responded with status ${res.status}`);
       }
     } catch (ex) {
-      console.error('Failed updating product specifications:', ex);
+      console.error('❌ [handleAdminEditProduct] Error updating product specifications:', ex);
       throw ex;
     }
   };
