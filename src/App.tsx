@@ -28,13 +28,21 @@ function getInitialRoute(): 'home' | 'products' | 'contact' | 'admin' {
   if (typeof window !== 'undefined') {
     const path = window.location.pathname.toLowerCase();
     const hash = window.location.hash.toLowerCase();
-    if (path === '/admin' || path.startsWith('/admin') || hash === '#admin') {
+    const search = window.location.search.toLowerCase();
+    if (
+      path === '/admin' || 
+      path.startsWith('/admin') || 
+      hash === '#admin' || 
+      hash.startsWith('#/admin') || 
+      hash.startsWith('#admin') ||
+      search.includes('admin')
+    ) {
       return 'admin';
     }
-    if (path === '/contact' || hash === '#contact') {
+    if (path === '/contact' || hash === '#contact' || hash.startsWith('#/contact')) {
       return 'contact';
     }
-    if (path === '/home' || hash === '#home') {
+    if (path === '/home' || hash === '#home' || hash.startsWith('#/home')) {
       return 'home';
     }
   }

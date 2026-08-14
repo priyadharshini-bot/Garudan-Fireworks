@@ -69,6 +69,7 @@ export default function Navbar({
             <div 
               className="flex items-center gap-2 sm:gap-3 cursor-pointer group select-none min-w-0 flex-1"
               onClick={() => handleNavClick('home')}
+              onDoubleClick={() => handleNavClick('admin')}
               id="brand-logo"
               title="Garudan Crackers Sivakasi"
             >
