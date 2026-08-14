@@ -23,14 +23,59 @@ import {
   Trash2, Plus, Minus, ArrowRight, Star, ShoppingCart, Percent
 } from 'lucide-react';
 
+// Helper to detect initial route from URL path or hash
+function getInitialRoute(): 'home' | 'products' | 'contact' | 'admin' {
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    if (path === '/admin' || path.startsWith('/admin') || hash === '#admin') {
+      return 'admin';
+    }
+    if (path === '/contact' || hash === '#contact') {
+      return 'contact';
+    }
+    if (path === '/home' || hash === '#home') {
+      return 'home';
+    }
+  }
+  return 'products';
+}
+
 export default function App() {
   // Navigation & Language States
   const [lang, setLang] = useState<Language>('en');
-  const [route, setRoute] = useState<'home' | 'products' | 'contact' | 'admin'>('products');
+  const [route, setRoute] = useState<'home' | 'products' | 'contact' | 'admin'>(getInitialRoute);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     return localStorage.getItem('garudan_admin_authenticated') === 'true';
   });
+
+  // Navigate handler that synchronizes browser URL history
+  const handleNavigate = (newRoute: 'home' | 'products' | 'contact' | 'admin') => {
+    setRoute(newRoute);
+    if (typeof window !== 'undefined') {
+      if (newRoute === 'admin') {
+        window.history.pushState({ route: 'admin' }, '', '/admin');
+      } else if (newRoute === 'home') {
+        window.history.pushState({ route: 'home' }, '', '/');
+      } else {
+        window.history.pushState({ route: newRoute }, '', `/#${newRoute}`);
+      }
+    }
+  };
+
+  // Listen for browser back/forward and hash changes
+  useEffect(() => {
+    const handleUrlChange = () => {
+      setRoute(getInitialRoute());
+    };
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
 
   // Dynamic Data States
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -403,7 +448,7 @@ export default function App() {
         {/* Navigation panel */}
         <Navbar 
           currentRoute={route}
-          setRoute={setRoute} 
+          setRoute={handleNavigate} 
           lang={lang} 
           setLang={setLang} 
           translations={t} 
@@ -420,8 +465,8 @@ export default function App() {
               <Hero 
                 lang={lang} 
                 translations={t} 
-                onShopClick={() => setRoute('products')}
-                onContactClick={() => setRoute('contact')}
+                onShopClick={() => handleNavigate('products')}
+                onContactClick={() => handleNavigate('contact')}
               />
 
               {/* Exclusive Festive Offers Carousel */}
@@ -621,7 +666,7 @@ export default function App() {
                 onLogout={() => {
                   setIsAdmin(false);
                   localStorage.removeItem('garudan_admin_authenticated');
-                  setRoute('home');
+                  handleNavigate('home');
                 }}
               />
             ) : (
@@ -631,14 +676,14 @@ export default function App() {
                   setIsAdmin(true);
                   localStorage.setItem('garudan_admin_authenticated', 'true');
                 }}
-                onCancel={() => setRoute('home')}
+                onCancel={() => handleNavigate('home')}
               />
             )
           )}
         </main>
 
         {/* Global Footer component */}
-        <Footer lang={lang} onNavigate={(route) => setRoute(route)} isAdmin={isAdmin} />
+        <Footer lang={lang} onNavigate={handleNavigate} isAdmin={isAdmin} />
 
         {/* Slide-over Shopping Cart ledger form drawer */}
         <CartDrawer 

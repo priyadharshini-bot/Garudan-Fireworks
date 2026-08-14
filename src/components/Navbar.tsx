@@ -4,7 +4,7 @@
  */
 
 import { Language, TranslationSchema } from '../types';
-import { ShoppingCart, Menu, X, Globe, Sparkles, Flame } from 'lucide-react';
+import { ShoppingCart, Menu, X, Globe, Sparkles, Flame, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import garudanLogo from '../assets/images/garudan_logo_1786048656432.jpg';
 
@@ -31,11 +31,11 @@ export default function Navbar({
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems: { key: 'home' | 'products' | 'contact' | 'admin'; label: string }[] = [
+  // Customer-facing navigation links strictly: Home, Products, Contact Us
+  const navItems: { key: 'home' | 'products' | 'contact'; label: string }[] = [
     { key: 'home', label: translations.home },
     { key: 'products', label: translations.products },
-    { key: 'contact', label: translations.contact },
-    ...(isAdmin ? [{ key: 'admin' as const, label: translations.admin }] : [])
+    { key: 'contact', label: translations.contact }
   ];
 
   const toggleLanguage = () => {
@@ -68,9 +68,9 @@ export default function Navbar({
             {/* Logo Brand Title with uploaded Garudan Logo */}
             <div 
               className="flex items-center gap-2 sm:gap-3 cursor-pointer group select-none min-w-0 flex-1"
-              onClick={() => handleNavClick('admin')}
+              onClick={() => handleNavClick('home')}
               id="brand-logo"
-              title="Garudan Crackers - Admin Console"
+              title="Garudan Crackers Sivakasi"
             >
               <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-full p-0.5 bg-gradient-to-tr from-amber-400 via-rose-500 to-purple-500 shadow-[0_0_15px_rgba(255,215,0,0.4)] group-hover:scale-105 transition-transform flex-shrink-0">
                 <img 
@@ -117,6 +117,19 @@ export default function Navbar({
             {/* Right Action Widgets */}
             <div className="hidden md:flex items-center gap-3">
               
+              {/* Authenticated Admin Mode shortcut for logged in merchants only */}
+              {isAdmin && (
+                <button
+                  onClick={() => handleNavClick(currentRoute === 'admin' ? 'home' : 'admin')}
+                  id="admin-auth-toggle-desktop"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-purple-500/40 text-purple-300 bg-purple-950/40 hover:bg-purple-900/60 transition-all font-sans text-xs font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(168,85,247,0.2)] cursor-pointer"
+                  title={currentRoute === 'admin' ? 'Switch to Store Front' : 'Open Admin Panel'}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  <span>{currentRoute === 'admin' ? 'Store Front' : 'Admin'}</span>
+                </button>
+              )}
+
               {/* Language Switcher */}
               <button
                 onClick={toggleLanguage}
@@ -182,7 +195,7 @@ export default function Navbar({
           </div>
         </div>
 
-        {/* Mobile Drawer Navigation overlay */}
+        {/* Mobile Drawer Navigation overlay: Strictly Home, Products, Contact Us */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-[#0d0918]/98 border-t border-amber-500/20 px-4 py-4 space-y-2.5 shadow-2xl animate-fade-in">
             {navItems.map((item) => {
