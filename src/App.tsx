@@ -303,7 +303,7 @@ export default function App() {
   // --- ADMINISTRATOR CARDINAL CONTROLS ---
 
   // Add Product to database
-  const handleAdminAddProduct = async (prodPayload: Omit<Product, 'id'>) => {
+  const handleAdminAddProduct = async (prodPayload: Omit<Product, 'id'>): Promise<Product> => {
     try {
       const res = await fetch('/api/products', {
         method: 'POST',
@@ -311,16 +311,21 @@ export default function App() {
         body: JSON.stringify(prodPayload)
       });
       if (res.ok) {
-        const returnedProd = await res.json();
-        setProducts([...products, returnedProd]);
+        const returnedProd: Product = await res.json();
+        setProducts(prev => [...prev, returnedProd]);
+        return returnedProd;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server responded with status ${res.status}`);
       }
     } catch (ex) {
-      console.error(ex);
+      console.error('Failed creating product:', ex);
+      throw ex;
     }
   };
 
-  // Edit Product
-  const handleAdminEditProduct = async (pId: string, updatedParams: Partial<Product>) => {
+  // Edit Product specifications & image
+  const handleAdminEditProduct = async (pId: string, updatedParams: Partial<Product>): Promise<Product> => {
     try {
       const res = await fetch(`/api/products/${pId}`, {
         method: 'PUT',
@@ -328,11 +333,23 @@ export default function App() {
         body: JSON.stringify(updatedParams)
       });
       if (res.ok) {
-        const editedProd = await res.json();
-        setProducts(products.map(p => p.id === editedProd.id ? editedProd : p));
+        const editedProd: Product = await res.json();
+        // Immediately update products state list with new specs and image
+        setProducts(prev => prev.map(p => (p.id === editedProd.id ? editedProd : p)));
+        // Also update any matching product in current cart
+        setCart(prevCart => {
+          const nextCart = prevCart.map(it => (it.product.id === editedProd.id ? { ...it, product: editedProd } : it));
+          localStorage.setItem('garudan_cart_ledger', JSON.stringify(nextCart));
+          return nextCart;
+        });
+        return editedProd;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server responded with status ${res.status}`);
       }
     } catch (ex) {
-      console.error(ex);
+      console.error('Failed updating product specifications:', ex);
+      throw ex;
     }
   };
 

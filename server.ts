@@ -15,10 +15,39 @@ dotenv.config();
 // Establish relative paths and DB directories
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
-// Ensure database folder exists
+// Ensure database and uploads folders exist
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Helper to save base64 data URI to file on disk and return cache-busted URL
+function saveImageIfDataUri(imageStr: string | undefined, prefix = 'prod'): string {
+  if (!imageStr || typeof imageStr !== 'string') return imageStr || 'sparkler';
+  const trimmed = imageStr.trim();
+  const match = trimmed.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+  if (!match) return trimmed;
+
+  try {
+    const rawExt = match[1].toLowerCase();
+    const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : rawExt;
+    const buffer = Buffer.from(match[2], 'base64');
+    const timestamp = Date.now();
+    const randomHex = Math.random().toString(36).substring(2, 8);
+    const filename = `${prefix}_${timestamp}_${randomHex}.${ext}`;
+    const filePath = path.join(UPLOADS_DIR, filename);
+    
+    fs.writeFileSync(filePath, buffer);
+    console.log(`📸 [IMAGE SAVED]: Created ${filename} (${buffer.length} bytes) in /uploads`);
+    return `/uploads/${filename}?v=${timestamp}`;
+  } catch (err) {
+    console.error('⚠️ [IMAGE SAVE ERROR]:', err);
+    return trimmed;
+  }
 }
 
 // Interfaces replicating types.ts
@@ -407,6 +436,24 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+  // Serve static uploaded product images directly with cache headers
+  app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '1h' }));
+
+  // Direct Image Upload Endpoint
+  app.post('/api/upload', (req, res) => {
+    try {
+      const { dataUrl } = req.body;
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        return res.status(400).json({ error: 'No image data supplied' });
+      }
+      const savedUrl = saveImageIfDataUri(dataUrl, 'upload');
+      res.json({ success: true, url: savedUrl });
+    } catch (err: any) {
+      console.error('Image upload failed:', err);
+      res.status(500).json({ error: 'Failed to process image upload' });
+    }
+  });
+
   // SMTP Configuration inspection endpoint
   app.get('/api/smtp-config', (req, res) => {
     const smtpUser = (process.env.SMTP_USER || 'garudancrackers@gmail.com').trim();
@@ -440,6 +487,7 @@ async function startServer() {
   // Create product
   app.post('/api/products', (req, res) => {
     const db = loadDB();
+    const processedImage = saveImageIfDataUri(req.body.image || 'sparkler', 'prod');
     const newProduct: APIProduct = {
       id: 'prod-' + Date.now().toString(),
       nameEn: req.body.nameEn || 'Unspecified Cracker',
@@ -449,13 +497,14 @@ async function startServer() {
       originalPrice: req.body.originalPrice ? Number(req.body.originalPrice) : undefined,
       descriptionEn: req.body.descriptionEn || '',
       descriptionTa: req.body.descriptionTa || '',
-      image: req.body.image || 'sparkler',
+      image: processedImage,
       stock: Number(req.body.stock) || 10,
       isFeatured: !!req.body.isFeatured
     };
 
     db.products.push(newProduct);
     saveDB(db);
+    console.log(`✨ [PRODUCT CREATED]: ${newProduct.nameEn} (Image: ${newProduct.image})`);
     res.status(201).json(newProduct);
   });
 
@@ -468,6 +517,17 @@ async function startServer() {
     }
 
     const current = db.products[pIdx];
+    let updatedImage = current.image;
+
+    if (req.body.image !== undefined && req.body.image !== null) {
+      // If a new data URI was sent, save it to disk and get the updated path
+      if (typeof req.body.image === 'string' && req.body.image.startsWith('data:image/')) {
+        updatedImage = saveImageIfDataUri(req.body.image, 'prod');
+      } else {
+        updatedImage = req.body.image;
+      }
+    }
+
     db.products[pIdx] = {
       ...current,
       nameEn: req.body.nameEn !== undefined ? req.body.nameEn : current.nameEn,
@@ -478,11 +538,12 @@ async function startServer() {
       descriptionEn: req.body.descriptionEn !== undefined ? req.body.descriptionEn : current.descriptionEn,
       descriptionTa: req.body.descriptionTa !== undefined ? req.body.descriptionTa : current.descriptionTa,
       stock: req.body.stock !== undefined ? Number(req.body.stock) : current.stock,
-      image: req.body.image !== undefined ? req.body.image : current.image,
+      image: updatedImage,
       isFeatured: req.body.isFeatured !== undefined ? !!req.body.isFeatured : current.isFeatured
     };
 
     saveDB(db);
+    console.log(`🔄 [PRODUCT UPDATED]: ID ${db.products[pIdx].id} - ${db.products[pIdx].nameEn} (Image: ${db.products[pIdx].image})`);
     res.json(db.products[pIdx]);
   });
 

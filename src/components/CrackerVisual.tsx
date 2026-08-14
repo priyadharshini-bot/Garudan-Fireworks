@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface CrackerVisualProps {
   type: string;
@@ -20,27 +20,38 @@ const PRESET_KEYS = [
 export default function CrackerVisual({ type, className = "w-full h-full" }: CrackerVisualProps) {
   const [hasError, setHasError] = useState(false);
 
+  // Reset error state immediately whenever the image source prop changes
+  useEffect(() => {
+    setHasError(false);
+  }, [type]);
+
   const cleanType = (type || '').trim();
 
   // If cleanType is a data URI, URL, path, blob, or custom image string (not a preset key)
   const isImageSource = 
-    cleanType.startsWith('data:') ||
-    cleanType.startsWith('http://') ||
-    cleanType.startsWith('https://') ||
-    cleanType.startsWith('/') ||
-    cleanType.startsWith('blob:') ||
-    cleanType.startsWith('assets/') ||
-    cleanType.startsWith('images/') ||
-    (!PRESET_KEYS.includes(cleanType) && cleanType.length > 20);
+    Boolean(cleanType) && (
+      cleanType.startsWith('data:') ||
+      cleanType.startsWith('http://') ||
+      cleanType.startsWith('https://') ||
+      cleanType.startsWith('/') ||
+      cleanType.startsWith('./') ||
+      cleanType.startsWith('blob:') ||
+      cleanType.startsWith('assets/') ||
+      cleanType.startsWith('images/') ||
+      cleanType.startsWith('uploads/') ||
+      !PRESET_KEYS.includes(cleanType)
+    );
 
   if (isImageSource && !hasError) {
     return (
       <img 
+        key={cleanType}
         src={cleanType} 
         alt="Product Visual" 
         className={`${className} object-contain`} 
         onError={() => setHasError(true)}
         referrerPolicy="no-referrer"
+        loading="lazy"
       />
     );
   }

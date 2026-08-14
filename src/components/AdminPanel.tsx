@@ -19,8 +19,8 @@ interface AdminPanelProps {
   categories: Category[];
   lang: Language;
   translations: TranslationSchema;
-  onAddProduct: (prod: Omit<Product, 'id'>) => Promise<void>;
-  onEditProduct: (pId: string, updated: Partial<Product>) => Promise<void>;
+  onAddProduct: (prod: Omit<Product, 'id'>) => Promise<Product | void>;
+  onEditProduct: (pId: string, updated: Partial<Product>) => Promise<Product | void>;
   onDeleteProduct: (pId: string) => Promise<void>;
   onUpdateOrderStatus: (oId: string, status: Order['status']) => Promise<void>;
   onDeleteOrder?: (oId: string) => Promise<void>;
@@ -157,6 +157,10 @@ export default function AdminPanel({
       return;
     }
 
+    setIsProcessingImage(true);
+
+    const chosenImage = useCustomImage ? customImageUrl.trim() : imageType;
+
     const prodPayload = {
       nameEn,
       nameTa,
@@ -167,20 +171,24 @@ export default function AdminPanel({
       descriptionTa: descTa,
       stock: Number(stock),
       isFeatured,
-      image: useCustomImage ? customImageUrl.trim() : imageType
+      image: chosenImage
     };
 
     try {
       if (editingProdId) {
         await onEditProduct(editingProdId, prodPayload);
         setEditingProdId(null);
+        setShowAddForm(false);
       } else {
         await onAddProduct(prodPayload);
         setShowAddForm(false);
       }
       resetForm();
-    } catch (err) {
-      alert('Error updating catalog. Please try again.');
+    } catch (err: any) {
+      console.error('Error saving product:', err);
+      alert('Error updating catalog: ' + (err?.message || 'Please try again.'));
+    } finally {
+      setIsProcessingImage(false);
     }
   };
 
@@ -203,12 +211,13 @@ export default function AdminPanel({
       'kids_snake', 'kids_wheel', 'combo_double'
     ];
     const imgStr = (p.image || '').trim();
-    const isCustom = imgStr.length > 0 && (
+    const isCustom = Boolean(imgStr) && (
       imgStr.startsWith('http://') || 
       imgStr.startsWith('https://') || 
       imgStr.startsWith('/') || 
       imgStr.startsWith('data:') || 
       imgStr.startsWith('blob:') ||
+      imgStr.startsWith('uploads/') ||
       !presets.includes(imgStr)
     );
 
