@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, FormEvent, ChangeEvent, DragEvent } from 'react';
+import React, { useState, useEffect, FormEvent, ChangeEvent, DragEvent, MouseEvent } from 'react';
 import { Product, Category, Order, Offer, Language, TranslationSchema } from '../types';
 import CrackerVisual from './CrackerVisual';
 import { 
@@ -178,11 +178,23 @@ export default function AdminPanel({
   const [descOfferTa, setDescOfferTa] = useState('');
 
   // Handle product save (Add or edit)
-  const handleSaveProduct = async (e?: FormEvent) => {
-    if (e) {
+  const handleSaveProduct = async (e?: FormEvent | React.MouseEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
     console.log(`📝 [handleSaveProduct] Submitting product form. editingProdId: "${editingProdId}"`);
+
+    const trimmedNameEn = (nameEn || '').trim();
+    const trimmedNameTa = (nameTa || '').trim();
+
+    if (!trimmedNameEn) {
+      alert('Please enter a product name in English.');
+      return;
+    }
+    if (!trimmedNameTa) {
+      alert('Please enter a product name in Tamil.');
+      return;
+    }
 
     setIsProcessingImage(true);
 
@@ -191,15 +203,15 @@ export default function AdminPanel({
       : (imageType || 'sparkler');
 
     const prodPayload = {
-      nameEn: nameEn.trim(),
-      nameTa: nameTa.trim(),
+      nameEn: trimmedNameEn,
+      nameTa: trimmedNameTa,
       category,
-      price: Number(price),
-      originalPrice: Number(origPrice) || undefined,
-      descriptionEn: descEn.trim(),
-      descriptionTa: descTa.trim(),
-      stock: Number(stock),
-      isFeatured,
+      price: Number(price) >= 0 ? Number(price) : 100,
+      originalPrice: Number(origPrice) > 0 ? Number(origPrice) : undefined,
+      descriptionEn: (descEn || '').trim(),
+      descriptionTa: (descTa || '').trim(),
+      stock: Number(stock) >= 0 ? Number(stock) : 0,
+      isFeatured: !!isFeatured,
       image: chosenImage
     };
 
@@ -209,13 +221,13 @@ export default function AdminPanel({
       if (editingProdId) {
         console.log(`🔄 [handleSaveProduct] Calling onEditProduct with ID: ${editingProdId}`);
         await onEditProduct(editingProdId, prodPayload);
-        setSuccessMessage(`Product "${nameEn || 'Cracker'}" specifications updated successfully!`);
+        setSuccessMessage(`Product "${trimmedNameEn}" specifications updated successfully!`);
         setEditingProdId(null);
         setShowAddForm(false);
       } else {
         console.log(`✨ [handleSaveProduct] Calling onAddProduct...`);
         await onAddProduct(prodPayload);
-        setSuccessMessage(`Product "${nameEn || 'Cracker'}" registered successfully to catalog!`);
+        setSuccessMessage(`Product "${trimmedNameEn}" registered successfully to catalog!`);
         setShowAddForm(false);
       }
       resetForm();
@@ -902,6 +914,7 @@ export default function AdminPanel({
                     <button
                       type="submit"
                       id="update-specs-btn"
+                      onClick={(e) => handleSaveProduct(e)}
                       className="px-6 py-2 bg-amber-500 text-neutral-950 font-bold font-sans text-xs rounded-xl hover:bg-amber-400 cursor-pointer"
                     >
                       {editingProdId ? 'Update Specifications' : 'Commit New Cracker'}

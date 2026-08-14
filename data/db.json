@@ -2,15 +2,15 @@
   "products": [
     {
       "id": "spk-1",
-      "nameEn": "Electric Sparklers (10cm)",
-      "nameTa": "மின்சார கம்பி மத்தாப்பு சிறப்பு பதிப்பு",
+      "nameEn": "Electric Sparklers (10cm) High Quality",
+      "nameTa": "மின்சார கம்பி மத்தாப்பு உயர் தரம்",
       "category": "Sparklers",
-      "price": 120,
-      "originalPrice": 195,
-      "descriptionEn": "Deluxe golden sparklers with enhanced sparkle duration.",
-      "descriptionTa": "கூடுதல் நேரம் எரியும் சிறப்பு தங்க கம்பி மத்தாப்பு.",
-      "image": "/uploads/upload_1786730957974_ckxrgj.png?v=1786730957974",
-      "stock": 140,
+      "price": 135,
+      "originalPrice": 190,
+      "descriptionEn": "Bright golden sparkle wires.",
+      "descriptionTa": "பிரகாசமான தங்க கம்பி மத்தாப்பு.",
+      "image": "/uploads/upload_1786731232688_gv32c4.png?v=1786731232688",
+      "stock": 160,
       "isFeatured": true
     },
     {
