@@ -6,7 +6,6 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
@@ -482,15 +481,38 @@ async function sendOrderMailNotification(order: APIOrder): Promise<{ emailSent: 
 export function createApp() {
   const app = express();
 
+  // CORS and Headers Handling
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    next();
+  });
+
   // JSON request parser with higher payload limit for image file data
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+  // Detailed Request Logger for production visibility in Vercel Runtime Logs
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const origUrl = req.originalUrl || req.url;
+    console.log(`📥 [API INCOMING]: ${req.method} ${origUrl} (url=${req.url})`);
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      console.log(`📤 [API OUTGOING]: ${req.method} ${origUrl} -> Status ${res.statusCode} (${duration}ms)`);
+    });
+    next();
+  });
+
   // Serve static uploaded product images directly with cache headers
   app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '1h' }));
 
-  // Fallback direct image route in case static middleware didn't catch or in serverless memory cache
-  app.get('/uploads/:filename', (req, res) => {
+  // Direct Image retrieval handler with memory buffer fallback
+  const handleGetImage = (req: express.Request, res: express.Response) => {
     const rawName = (req.params.filename || '').split('?')[0];
     const decodedName = decodeURIComponent(rawName);
 
@@ -512,25 +534,32 @@ export function createApp() {
     }
 
     res.status(404).send('Image not found');
-  });
+  };
+
+  app.get('/uploads/:filename', handleGetImage);
+  app.get('/api/uploads/:filename', handleGetImage);
+
+  // ---------------------- ROUTER DEFINITION ----------------------
+  const apiRouter = express.Router();
 
   // Direct Image Upload Endpoint
-  app.post('/api/upload', (req, res) => {
+  apiRouter.post('/upload', (req, res) => {
     try {
       const { dataUrl } = req.body;
       if (!dataUrl || typeof dataUrl !== 'string') {
         return res.status(400).json({ error: 'No image data supplied' });
       }
       const savedUrl = saveImageIfDataUri(dataUrl, 'upload');
+      console.log(`📸 [API UPLOAD SUCCESS]: ${savedUrl}`);
       res.json({ success: true, url: savedUrl });
     } catch (err: any) {
-      console.error('Image upload failed:', err);
-      res.status(500).json({ error: 'Failed to process image upload' });
+      console.error('💥 [API UPLOAD FAILED]:', err);
+      res.status(500).json({ error: 'Failed to process image upload', details: err?.message });
     }
   });
 
   // SMTP Configuration inspection endpoint
-  app.get('/api/smtp-config', (req, res) => {
+  apiRouter.get('/smtp-config', (req, res) => {
     const smtpUser = (process.env.SMTP_USER || 'garudancrackers@gmail.com').trim();
     const recipient = (process.env.ADMIN_EMAIL_RECIPIENT || 'garudancrackers@gmail.com').trim();
     const rawPass = process.env.SMTP_PASS || 'efzkvotyzyjwcmxu';
@@ -554,285 +583,366 @@ export function createApp() {
   // ---------------------- PRODUCTS ENDPOINTS ----------------------
   
   // Get all products
-  app.get('/api/products', (req, res) => {
-    const db = loadDB();
-    res.json(db.products);
+  apiRouter.get('/products', (req, res) => {
+    try {
+      const db = loadDB();
+      res.json(db.products);
+    } catch (err: any) {
+      console.error('💥 [GET /products ERROR]:', err);
+      res.status(500).json({ error: 'Failed to retrieve products', details: err?.message });
+    }
   });
 
   // Create product
-  app.post('/api/products', (req, res) => {
-    const db = loadDB();
-    const processedImage = saveImageIfDataUri(req.body.image || 'sparkler', 'prod');
-    const newProduct: APIProduct = {
-      id: 'prod-' + Date.now().toString(),
-      nameEn: req.body.nameEn || 'Unspecified Cracker',
-      nameTa: req.body.nameTa || 'Unspecified Cracker',
-      category: req.body.category || 'Sparklers',
-      price: Number(req.body.price) || 100,
-      originalPrice: req.body.originalPrice ? Number(req.body.originalPrice) : undefined,
-      descriptionEn: req.body.descriptionEn || '',
-      descriptionTa: req.body.descriptionTa || '',
-      image: processedImage,
-      stock: Number(req.body.stock) || 10,
-      isFeatured: !!req.body.isFeatured
-    };
-
-    db.products.push(newProduct);
-    saveDB(db);
-    console.log(`✨ [PRODUCT CREATED]: ${newProduct.nameEn} (Image: ${newProduct.image})`);
-    res.status(201).json(newProduct);
-  });
-
-  // Edit product specs (supports PUT, PATCH, POST with flexible matching and upserting)
-  const handleUpdateProduct = (req: any, res: any) => {
-    console.log(`📥 [SERVER] Product update request received: Method=${req.method}, URL=${req.originalUrl}, ParamsID=${req.params.id}, BodyID=${req.body?.id}`);
-    const db = loadDB();
-    const rawParamId = req.params.id || req.body.id || '';
-    const decodedId = decodeURIComponent(rawParamId).trim();
-
-    let pIdx = db.products.findIndex((p) => p.id === rawParamId || p.id === decodedId);
-    if (pIdx === -1) {
-      // Case-insensitive / trimmed match
-      pIdx = db.products.findIndex(
-        (p) => p.id.trim().toLowerCase() === decodedId.toLowerCase()
-      );
-    }
-
-    if (pIdx === -1) {
-      // If product exists in SEED_PRODUCTS, initialize it into db.products
-      const seedMatch = SEED_PRODUCTS.find(
-        (p) => p.id.trim().toLowerCase() === decodedId.toLowerCase() || p.id === rawParamId
-      );
-      if (seedMatch) {
-        db.products.push({ ...seedMatch });
-        pIdx = db.products.length - 1;
-      }
-    }
-
-    // Process image update or preserve existing
-    let updatedImage: string = 'sparkler';
-    if (pIdx !== -1) {
-      updatedImage = db.products[pIdx].image;
-    }
-
-    if (req.body.image !== undefined && req.body.image !== null && req.body.image !== '') {
-      // If a new data URI was sent, save it to disk and get the updated path
-      if (typeof req.body.image === 'string' && req.body.image.startsWith('data:image/')) {
-        updatedImage = saveImageIfDataUri(req.body.image, 'prod');
-      } else {
-        updatedImage = req.body.image;
-      }
-    }
-
-    if (pIdx === -1) {
-      // Upsert product so updates never 404
-      const newProd: APIProduct = {
-        id: decodedId || ('prod-' + Date.now()),
+  apiRouter.post('/products', (req, res) => {
+    try {
+      const db = loadDB();
+      const processedImage = saveImageIfDataUri(req.body.image || 'sparkler', 'prod');
+      const newProduct: APIProduct = {
+        id: 'prod-' + Date.now().toString(),
         nameEn: req.body.nameEn || 'Unspecified Cracker',
         nameTa: req.body.nameTa || 'Unspecified Cracker',
         category: req.body.category || 'Sparklers',
-        price: req.body.price !== undefined ? Number(req.body.price) : 100,
-        originalPrice: req.body.originalPrice !== undefined ? Number(req.body.originalPrice) : undefined,
+        price: Number(req.body.price) >= 0 ? Number(req.body.price) : 100,
+        originalPrice: req.body.originalPrice ? Number(req.body.originalPrice) : undefined,
         descriptionEn: req.body.descriptionEn || '',
         descriptionTa: req.body.descriptionTa || '',
-        image: updatedImage,
-        stock: req.body.stock !== undefined ? Number(req.body.stock) : 10,
-        isFeatured: req.body.isFeatured !== undefined ? !!req.body.isFeatured : false
+        image: processedImage,
+        stock: Number(req.body.stock) >= 0 ? Number(req.body.stock) : 10,
+        isFeatured: !!req.body.isFeatured
       };
-      db.products.push(newProd);
+
+      db.products.push(newProduct);
       saveDB(db);
-      console.log(`✨ [SERVER PRODUCT UPSERTED]: ID ${newProd.id} - ${newProd.nameEn} (Image: ${newProd.image})`);
-      return res.status(200).json(newProd);
+      console.log(`✨ [PRODUCT CREATED]: ${newProduct.nameEn} (ID: ${newProduct.id}, Image: ${newProduct.image})`);
+      res.status(201).json(newProduct);
+    } catch (err: any) {
+      console.error('💥 [POST /products ERROR]:', err);
+      res.status(500).json({ error: 'Failed to register product', details: err?.message });
     }
+  });
 
-    const current = db.products[pIdx];
+  // Edit product specifications (Supports PUT, PATCH, POST with flexible ID matching and upserting)
+  const handleUpdateProduct = (req: express.Request, res: express.Response) => {
+    try {
+      const rawParamId = req.params.id || req.body?.id || '';
+      const decodedId = decodeURIComponent(String(rawParamId)).trim();
+      console.log(`📥 [HANDLE UPDATE PRODUCT]: Method=${req.method}, DecodedID="${decodedId}", Body:`, {
+        nameEn: req.body?.nameEn,
+        nameTa: req.body?.nameTa,
+        category: req.body?.category,
+        price: req.body?.price,
+        originalPrice: req.body?.originalPrice,
+        stock: req.body?.stock,
+        isFeatured: req.body?.isFeatured,
+        imageType: typeof req.body?.image
+      });
 
-    db.products[pIdx] = {
-      ...current,
-      nameEn: req.body.nameEn !== undefined ? req.body.nameEn : current.nameEn,
-      nameTa: req.body.nameTa !== undefined ? req.body.nameTa : current.nameTa,
-      category: req.body.category !== undefined ? req.body.category : current.category,
-      price: req.body.price !== undefined ? Number(req.body.price) : current.price,
-      originalPrice: req.body.originalPrice !== undefined ? Number(req.body.originalPrice) : current.originalPrice,
-      descriptionEn: req.body.descriptionEn !== undefined ? req.body.descriptionEn : current.descriptionEn,
-      descriptionTa: req.body.descriptionTa !== undefined ? req.body.descriptionTa : current.descriptionTa,
-      stock: req.body.stock !== undefined ? Number(req.body.stock) : current.stock,
-      image: updatedImage,
-      isFeatured: req.body.isFeatured !== undefined ? !!req.body.isFeatured : current.isFeatured
-    };
+      const db = loadDB();
 
-    saveDB(db);
-    console.log(`🔄 [SERVER PRODUCT UPDATED]: ID ${db.products[pIdx].id} - ${db.products[pIdx].nameEn} (Image: ${db.products[pIdx].image})`);
-    return res.status(200).json(db.products[pIdx]);
+      let pIdx = db.products.findIndex((p) => p.id === rawParamId || p.id === decodedId);
+      if (pIdx === -1 && decodedId) {
+        // Case-insensitive & trimmed match
+        pIdx = db.products.findIndex(
+          (p) => p.id.trim().toLowerCase() === decodedId.toLowerCase()
+        );
+      }
+
+      if (pIdx === -1 && decodedId) {
+        // If product exists in SEED_PRODUCTS, initialize it into db.products
+        const seedMatch = SEED_PRODUCTS.find(
+          (p) => p.id.trim().toLowerCase() === decodedId.toLowerCase() || p.id === rawParamId
+        );
+        if (seedMatch) {
+          db.products.push({ ...seedMatch });
+          pIdx = db.products.length - 1;
+        }
+      }
+
+      // Process image update or preserve existing
+      let updatedImage: string = 'sparkler';
+      if (pIdx !== -1) {
+        updatedImage = db.products[pIdx].image;
+      }
+
+      if (req.body?.image !== undefined && req.body?.image !== null && req.body?.image !== '') {
+        // If a new data URI was sent, save it to disk/memory and get the cache-busted path
+        if (typeof req.body.image === 'string' && req.body.image.startsWith('data:image/')) {
+          updatedImage = saveImageIfDataUri(req.body.image, 'prod');
+        } else {
+          updatedImage = req.body.image;
+        }
+      }
+
+      if (pIdx === -1) {
+        // Upsert product so updates never fail with 404
+        const newProd: APIProduct = {
+          id: decodedId || ('prod-' + Date.now()),
+          nameEn: req.body?.nameEn || 'Unspecified Cracker',
+          nameTa: req.body?.nameTa || 'Unspecified Cracker',
+          category: req.body?.category || 'Sparklers',
+          price: req.body?.price !== undefined ? Number(req.body.price) : 100,
+          originalPrice: req.body?.originalPrice !== undefined && req.body?.originalPrice !== '' ? Number(req.body.originalPrice) : undefined,
+          descriptionEn: req.body?.descriptionEn || '',
+          descriptionTa: req.body?.descriptionTa || '',
+          image: updatedImage,
+          stock: req.body?.stock !== undefined ? Number(req.body.stock) : 10,
+          isFeatured: req.body?.isFeatured !== undefined ? !!req.body.isFeatured : false
+        };
+        db.products.push(newProd);
+        saveDB(db);
+        console.log(`✨ [PRODUCT UPSERTED SUCCESS]: ID ${newProd.id} - ${newProd.nameEn} (Price: ₹${newProd.price}, Image: ${newProd.image})`);
+        return res.status(200).json(newProd);
+      }
+
+      const current = db.products[pIdx];
+
+      db.products[pIdx] = {
+        ...current,
+        nameEn: req.body?.nameEn !== undefined ? req.body.nameEn : current.nameEn,
+        nameTa: req.body?.nameTa !== undefined ? req.body.nameTa : current.nameTa,
+        category: req.body?.category !== undefined ? req.body.category : current.category,
+        price: req.body?.price !== undefined ? Number(req.body.price) : current.price,
+        originalPrice: req.body?.originalPrice !== undefined && req.body?.originalPrice !== '' ? Number(req.body.originalPrice) : (req.body?.originalPrice === '' ? undefined : current.originalPrice),
+        descriptionEn: req.body?.descriptionEn !== undefined ? req.body.descriptionEn : current.descriptionEn,
+        descriptionTa: req.body?.descriptionTa !== undefined ? req.body.descriptionTa : current.descriptionTa,
+        stock: req.body?.stock !== undefined ? Number(req.body.stock) : current.stock,
+        image: updatedImage,
+        isFeatured: req.body?.isFeatured !== undefined ? !!req.body.isFeatured : current.isFeatured
+      };
+
+      saveDB(db);
+      console.log(`🔄 [PRODUCT UPDATED SUCCESS]: ID ${db.products[pIdx].id} - ${db.products[pIdx].nameEn} (Stock: ${db.products[pIdx].stock}, Image: ${db.products[pIdx].image})`);
+      return res.status(200).json(db.products[pIdx]);
+    } catch (err: any) {
+      console.error('💥 [UPDATE PRODUCT FAILED]:', err);
+      return res.status(500).json({ error: 'Failed to update product specifications', details: err?.message });
+    }
   };
 
-  app.put('/api/products/:id', handleUpdateProduct);
-  app.patch('/api/products/:id', handleUpdateProduct);
-  app.post('/api/products/:id', handleUpdateProduct);
-  app.post('/api/products/update/:id', handleUpdateProduct);
-  app.put('/api/products', handleUpdateProduct);
-  app.patch('/api/products', handleUpdateProduct);
-  app.post('/api/products/update', handleUpdateProduct);
-  app.put('/api/product/:id', handleUpdateProduct);
-  app.patch('/api/product/:id', handleUpdateProduct);
-  app.post('/api/product/:id', handleUpdateProduct);
-  app.put('/api/product', handleUpdateProduct);
-  app.patch('/api/product', handleUpdateProduct);
+  // Attach all update route variations
+  apiRouter.put('/products/:id', handleUpdateProduct);
+  apiRouter.patch('/products/:id', handleUpdateProduct);
+  apiRouter.post('/products/:id', handleUpdateProduct);
+  apiRouter.post('/products/update/:id', handleUpdateProduct);
+  apiRouter.put('/products', handleUpdateProduct);
+  apiRouter.patch('/products', handleUpdateProduct);
+  apiRouter.post('/products/update', handleUpdateProduct);
+  apiRouter.put('/product/:id', handleUpdateProduct);
+  apiRouter.patch('/product/:id', handleUpdateProduct);
+  apiRouter.post('/product/:id', handleUpdateProduct);
+  apiRouter.put('/product', handleUpdateProduct);
+  apiRouter.patch('/product', handleUpdateProduct);
 
   // Delete product
-  app.delete('/api/products/:id', (req, res) => {
-    const db = loadDB();
-    const rawParamId = req.params.id;
-    const decodedId = decodeURIComponent(rawParamId).trim();
+  apiRouter.delete('/products/:id', (req, res) => {
+    try {
+      const db = loadDB();
+      const rawParamId = req.params.id;
+      const decodedId = decodeURIComponent(rawParamId).trim();
 
-    const filtered = db.products.filter(
-      (p) => p.id !== rawParamId && p.id !== decodedId && p.id.trim().toLowerCase() !== decodedId.toLowerCase()
-    );
-    db.products = filtered;
-    saveDB(db);
-    res.json({ success: true, message: 'Cracker removed successfully.' });
+      const filtered = db.products.filter(
+        (p) => p.id !== rawParamId && p.id !== decodedId && p.id.trim().toLowerCase() !== decodedId.toLowerCase()
+      );
+      db.products = filtered;
+      saveDB(db);
+      console.log(`🗑️ [PRODUCT DELETED]: ID ${decodedId}`);
+      res.json({ success: true, message: 'Cracker removed successfully.' });
+    } catch (err: any) {
+      console.error('💥 [DELETE PRODUCT FAILED]:', err);
+      res.status(500).json({ error: 'Failed to delete product', details: err?.message });
+    }
   });
 
   // ---------------------- ORDERS ENDPOINTS ----------------------
 
   // Get orders list
-  app.get('/api/orders', (req, res) => {
-    const db = loadDB();
-    res.json(db.orders);
+  apiRouter.get('/orders', (req, res) => {
+    try {
+      const db = loadDB();
+      res.json(db.orders);
+    } catch (err: any) {
+      console.error('💥 [GET /orders FAILED]:', err);
+      res.status(500).json({ error: 'Failed to retrieve orders', details: err?.message });
+    }
   });
 
   // Create Order with stock adjustment
-  app.post('/api/orders', async (req, res) => {
-    const db = loadDB();
-    const { customerName, mobile, address, items, totalAmount, notes } = req.body;
+  apiRouter.post('/orders', async (req, res) => {
+    try {
+      const db = loadDB();
+      const { customerName, mobile, address, items, totalAmount, notes } = req.body;
 
-    if (!customerName || !mobile || !address || !items || !items.length) {
-      return res.status(400).json({ error: 'Incomplete client coordinates or vacant items' });
-    }
-
-    // Process and subtract inventory levels
-    const orderItems: APIOrder['items'] = [];
-    let computedSum = 0;
-
-    for (const it of items) {
-      const matchP = db.products.find((p) => p.id === it.productId);
-      if (matchP) {
-        // Subtract stock level
-        const originalStock = matchP.stock;
-        matchP.stock = Math.max(0, originalStock - it.quantity);
-        
-        orderItems.push({
-          productId: matchP.id,
-          productNameEn: matchP.nameEn,
-          productNameTa: matchP.nameTa,
-          price: matchP.price,
-          quantity: it.quantity
-        });
-
-        computedSum += matchP.price * it.quantity;
+      if (!customerName || !mobile || !address || !items || !items.length) {
+        return res.status(400).json({ error: 'Incomplete client coordinates or vacant items' });
       }
+
+      // Process and subtract inventory levels
+      const orderItems: APIOrder['items'] = [];
+      let computedSum = 0;
+
+      for (const it of items) {
+        const matchP = db.products.find((p) => p.id === it.productId);
+        if (matchP) {
+          // Subtract stock level
+          const originalStock = matchP.stock;
+          matchP.stock = Math.max(0, originalStock - it.quantity);
+          
+          orderItems.push({
+            productId: matchP.id,
+            productNameEn: matchP.nameEn,
+            productNameTa: matchP.nameTa,
+            price: matchP.price,
+            quantity: it.quantity
+          });
+
+          computedSum += matchP.price * it.quantity;
+        }
+      }
+
+      // Compute final discounted settlement
+      const finalVal = totalAmount !== undefined ? Number(totalAmount) : computedSum;
+
+      const newOrder: APIOrder = {
+        id: 'GRD-' + Math.floor(100000 + Math.random() * 900000).toString(),
+        customerName,
+        mobile,
+        address,
+        notes,
+        items: orderItems,
+        totalAmount: finalVal,
+        status: 'Pending',
+        createdAt: new Date().toISOString()
+      };
+
+      db.orders.push(newOrder);
+      saveDB(db);
+
+      console.log(`📲 [ORDER RECORDED]: ID ${newOrder.id} for ${newOrder.customerName} (₹${newOrder.totalAmount}). WhatsApp order generated.`);
+
+      res.status(201).json(newOrder);
+    } catch (err: any) {
+      console.error('💥 [POST /orders FAILED]:', err);
+      res.status(500).json({ error: 'Failed to record order', details: err?.message });
     }
-
-    // Compute final discounted settlement
-    const finalVal = totalAmount !== undefined ? Number(totalAmount) : computedSum;
-
-    const newOrder: APIOrder = {
-      id: 'GRD-' + Math.floor(100000 + Math.random() * 900000).toString(),
-      customerName,
-      mobile,
-      address,
-      notes,
-      items: orderItems,
-      totalAmount: finalVal,
-      status: 'Pending',
-      createdAt: new Date().toISOString()
-    };
-
-    db.orders.push(newOrder);
-    saveDB(db);
-
-    console.log(`📲 [ORDER RECORDED]: ID ${newOrder.id} for ${newOrder.customerName} (₹${newOrder.totalAmount}). WhatsApp order generated.`);
-
-    res.status(201).json(newOrder);
   });
 
   // Update order status (Pending -> Committed -> Delivered etc.)
-  app.put('/api/orders/:id/status', (req, res) => {
-    const db = loadDB();
-    const oIdx = db.orders.findIndex((o) => o.id === req.params.id);
-    if (oIdx === -1) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
+  apiRouter.put('/orders/:id/status', (req, res) => {
+    try {
+      const db = loadDB();
+      const oIdx = db.orders.findIndex((o) => o.id === req.params.id);
+      if (oIdx === -1) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
 
-    db.orders[oIdx].status = req.body.status || db.orders[oIdx].status;
-    saveDB(db);
-    res.json(db.orders[oIdx]);
+      db.orders[oIdx].status = req.body.status || db.orders[oIdx].status;
+      saveDB(db);
+      res.json(db.orders[oIdx]);
+    } catch (err: any) {
+      console.error('💥 [UPDATE ORDER STATUS FAILED]:', err);
+      res.status(500).json({ error: 'Failed to update order status', details: err?.message });
+    }
   });
 
   // Delete single order log
-  app.delete('/api/orders/:id', (req, res) => {
-    const db = loadDB();
-    const filtered = db.orders.filter((o) => o.id !== req.params.id);
-    db.orders = filtered;
-    saveDB(db);
-    res.json({ success: true, message: 'Order deleted successfully' });
+  apiRouter.delete('/orders/:id', (req, res) => {
+    try {
+      const db = loadDB();
+      const filtered = db.orders.filter((o) => o.id !== req.params.id);
+      db.orders = filtered;
+      saveDB(db);
+      res.json({ success: true, message: 'Order deleted successfully' });
+    } catch (err: any) {
+      console.error('💥 [DELETE ORDER FAILED]:', err);
+      res.status(500).json({ error: 'Failed to delete order', details: err?.message });
+    }
   });
 
   // Clear all sales history orders
-  app.delete('/api/orders', (req, res) => {
-    const db = loadDB();
-    db.orders = [];
-    saveDB(db);
-    res.json({ success: true, message: 'All sales history cleared' });
+  apiRouter.delete('/orders', (req, res) => {
+    try {
+      const db = loadDB();
+      db.orders = [];
+      saveDB(db);
+      res.json({ success: true, message: 'All sales history cleared' });
+    } catch (err: any) {
+      console.error('💥 [CLEAR ORDERS FAILED]:', err);
+      res.status(500).json({ error: 'Failed to clear orders history', details: err?.message });
+    }
   });
 
   // ---------------------- OFFERS ENDPOINTS ----------------------
 
   // Get offers list
-  app.get('/api/offers', (req, res) => {
-    const db = loadDB();
-    res.json(db.offers);
+  apiRouter.get('/offers', (req, res) => {
+    try {
+      const db = loadDB();
+      res.json(db.offers);
+    } catch (err: any) {
+      console.error('💥 [GET /offers FAILED]:', err);
+      res.status(500).json({ error: 'Failed to retrieve offers', details: err?.message });
+    }
   });
 
   // Create offer coupon
-  app.post('/api/offers', (req, res) => {
-    const db = loadDB();
-    const newOffer: APIOffer = {
-      id: 'off-' + Date.now().toString(),
-      code: (req.body.code || 'SALE').toUpperCase(),
-      discountPercentage: Number(req.body.discountPercentage) || 10,
-      active: true,
-      minOrderValue: Number(req.body.minOrderValue) || 1000,
-      descriptionEn: req.body.descriptionEn || '',
-      descriptionTa: req.body.descriptionTa || ''
-    };
+  apiRouter.post('/offers', (req, res) => {
+    try {
+      const db = loadDB();
+      const newOffer: APIOffer = {
+        id: 'off-' + Date.now().toString(),
+        code: (req.body.code || 'SALE').toUpperCase(),
+        discountPercentage: Number(req.body.discountPercentage) || 10,
+        active: true,
+        minOrderValue: Number(req.body.minOrderValue) || 1000,
+        descriptionEn: req.body.descriptionEn || '',
+        descriptionTa: req.body.descriptionTa || ''
+      };
 
-    db.offers.push(newOffer);
-    saveDB(db);
-    res.status(201).json(newOffer);
+      db.offers.push(newOffer);
+      saveDB(db);
+      res.status(201).json(newOffer);
+    } catch (err: any) {
+      console.error('💥 [POST /offers FAILED]:', err);
+      res.status(500).json({ error: 'Failed to create offer', details: err?.message });
+    }
   });
 
   // Toggle active coupon status
-  app.post('/api/offers/:id/toggle', (req, res) => {
-    const db = loadDB();
-    const oIdx = db.offers.findIndex((o) => o.id === req.params.id);
-    if (oIdx === -1) {
-      return res.status(404).json({ error: 'Promo coupon not found' });
-    }
+  apiRouter.post('/offers/:id/toggle', (req, res) => {
+    try {
+      const db = loadDB();
+      const oIdx = db.offers.findIndex((o) => o.id === req.params.id);
+      if (oIdx === -1) {
+        return res.status(404).json({ error: 'Promo coupon not found' });
+      }
 
-    db.offers[oIdx].active = !db.offers[oIdx].active;
-    saveDB(db);
-    res.json(db.offers[oIdx]);
+      db.offers[oIdx].active = !db.offers[oIdx].active;
+      saveDB(db);
+      res.json(db.offers[oIdx]);
+    } catch (err: any) {
+      console.error('💥 [TOGGLE OFFER FAILED]:', err);
+      res.status(500).json({ error: 'Failed to toggle offer', details: err?.message });
+    }
   });
 
   // Delete offer coupon
-  app.delete('/api/offers/:id', (req, res) => {
-    const db = loadDB();
-    const filtered = db.offers.filter((o) => o.id !== req.params.id);
-    db.offers = filtered;
-    saveDB(db);
-    res.json({ success: true, message: 'Promo coupon deleted successfully.' });
+  apiRouter.delete('/offers/:id', (req, res) => {
+    try {
+      const db = loadDB();
+      const filtered = db.offers.filter((o) => o.id !== req.params.id);
+      db.offers = filtered;
+      saveDB(db);
+      res.json({ success: true, message: 'Promo coupon deleted successfully.' });
+    } catch (err: any) {
+      console.error('💥 [DELETE OFFER FAILED]:', err);
+      res.status(500).json({ error: 'Failed to delete offer', details: err?.message });
+    }
   });
+
+  // Mount API router at both '/api' and '/' to guarantee matches regardless of serverless path rewriting
+  app.use('/api', apiRouter);
+  app.use('/', apiRouter);
 
   // ----------------------- SEO & CRAWLER ROUTES -----------------------
 
@@ -869,6 +979,18 @@ Sitemap: https://garudancrackers.com/sitemap.xml`);
 </urlset>`);
   });
 
+  // Global Error Catch Middleware for Express
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('💥 [EXPRESS GLOBAL ERROR HANDLER]:', err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: err?.message || String(err),
+        details: err?.stack
+      });
+    }
+  });
+
   return app;
 }
 
@@ -879,6 +1001,7 @@ export async function startServer() {
 
   // Development VS Production Asset Handlers
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

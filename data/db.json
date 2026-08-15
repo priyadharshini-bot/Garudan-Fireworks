@@ -2,15 +2,15 @@
   "products": [
     {
       "id": "spk-1",
-      "nameEn": "Electric Sparklers (10cm) Pro",
-      "nameTa": "மின்சார கம்பி மத்தாப்பு ப்ரோ",
+      "nameEn": "Electric Sparklers Premium Custom",
+      "nameTa": "மின்சார கம்பி மத்தாப்பு ஸ்பெஷல்",
       "category": "Sparklers",
-      "price": 135,
-      "originalPrice": 195,
-      "descriptionEn": "Super bright gold sparkle wires.",
-      "descriptionTa": "அதிபிரகாசமான தங்க கம்பி மத்தாப்பு.",
-      "image": "sparkler",
-      "stock": 140,
+      "price": 150,
+      "originalPrice": 220,
+      "descriptionEn": "Custom uploaded product picture.",
+      "descriptionTa": "பிரத்யேக புகைப்படம்.",
+      "image": "/uploads/upload_1786772955636_8h9lpz.png?v=1786772955636",
+      "stock": 99,
       "isFeatured": true
     },
     {
