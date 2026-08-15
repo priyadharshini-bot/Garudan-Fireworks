@@ -1,30 +1,17 @@
 {
   "products": [
     {
-      "id": "spk-1",
-      "nameEn": "Electric Sparklers Premium Custom",
-      "nameTa": "மின்சார கம்பி மத்தாப்பு ஸ்பெஷல்",
-      "category": "Sparklers",
-      "price": 150,
-      "originalPrice": 220,
-      "descriptionEn": "Custom uploaded product picture.",
-      "descriptionTa": "பிரத்யேக புகைப்படம்.",
-      "image": "/uploads/upload_1786772955636_8h9lpz.png?v=1786772955636",
-      "stock": 99,
-      "isFeatured": true
-    },
-    {
       "id": "spk-2",
-      "nameEn": "Tri-Colour Fireworks Sparklers (30cm)",
-      "nameTa": "மும்வண்ண கம்பி மத்தாப்பு",
+      "nameEn": "Tri-Colour Fireworks Sparklers (30cm) Extra Long",
+      "nameTa": "மும்வண்ண கம்பி மத்தாப்பு ஸ்பெஷல்",
       "category": "Sparklers",
-      "price": 240,
-      "originalPrice": 350,
-      "descriptionEn": "Extra-long sparklers that change colors sequentially from Red to Green, and finally dazzling Silver.",
-      "descriptionTa": "சிவப்பு, பச்சை மற்றும் வெள்ளி நிறமாக மாறி எரியும் கூடுதல் நீளமான மும்வண்ண கம்பி மத்தாப்பு.",
+      "price": 250,
+      "originalPrice": 360,
+      "descriptionEn": "Extra-long sparklers that change colors sequentially.",
+      "descriptionTa": "மும்வண்ண கம்பி மத்தாப்பு.",
       "image": "sparkler_multi",
-      "stock": 117,
-      "isFeatured": false
+      "stock": 115,
+      "isFeatured": true
     },
     {
       "id": "flp-1",
@@ -122,11 +109,11 @@
       "nameEn": "30-Shot Golden Willow Aerial Show",
       "nameTa": "30 ஷாட்ஸ் கோல்டன் வில்லோ",
       "category": "Fancy Crackers",
-      "price": 1250,
+      "price": 1500,
       "originalPrice": 1950,
       "descriptionEn": "Professional-grade luxury aerial fireworks showing 30 stunning willow cascades in synchronized fire intervals.",
       "descriptionTa": "அதிநவீன ஏரியல் ஷோ. 30 முறைகள் தொடர்ந்து வெடித்து தங்க நிற சிதறல்களை வாரி வழங்கும் வானவேடிக்கை.",
-      "image": "fancy_cake30",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTUhrTcpqCm6PsUbvYxNrZ5-TU6U9lA4mVmJTrXKnmpow&s=10",
       "stock": 25,
       "isFeatured": true
     }
